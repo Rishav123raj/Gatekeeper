@@ -9,6 +9,7 @@ honest odds say GO, CAUTION or NO TRADE. It is tooling, not financial advice.
 - Plan: [DASHBOARD_PROJECT_PLAN.md](DASHBOARD_PROJECT_PLAN.md)
 - Build tracker: [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)
 - Skills usage: [DAY_TRADER_GUIDE.md](DAY_TRADER_GUIDE.md)
+- All commands: [COMMANDS.md](COMMANDS.md)
 
 ## Quick start (Windows)
 

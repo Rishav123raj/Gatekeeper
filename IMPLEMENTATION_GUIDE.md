@@ -38,7 +38,7 @@ Claude will then:
 
 | Phase | Name | Plan milestone | Status | Started | Finished | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0 | Foundation | M0 | 🟨 | 2026-10-24 | | All done locally; CI pending a push |
+| 0 | Foundation | M0 | ✅ | 2026-10-24 | 2026-10-24 | CI green on Windows + Ubuntu |
 | 1 | Skill adapter & contracts | M1 | ⬜ | | | |
 | 2 | Storage & background worker | M2 | ⬜ | | | |
 | 3 | Market Overview, Scanner, News | M3 | ⬜ | | | |
@@ -172,7 +172,7 @@ uv run streamlit run app/Home.py      # page opens at http://127.0.0.1:8501
 - [x] `uv run pytest` green; ruff clean
 - [x] The upstream skills test suite passes on the pinned commit
 - [x] The Home page shows the clock bar with correct NY and IST times
-- [ ] CI green on Windows and Ubuntu (waiting: needs a push to GitHub)
+- [x] CI green on Windows and Ubuntu (run 40008407159, commit c7c8c6f)
 
 ---
 
@@ -551,3 +551,4 @@ Append one line per work session (newest at the bottom).
 | --- | --- | --- | --- | --- |
 | 2026-10-24 | — | Implementation guide written | — | Start Phase 0 |
 | 2026-10-24 | 0 | Skills pinned as a submodule; pyproject, settings, clock (NY/IST, session phase), Home page with clock bar, placeholder worker, dev.ps1, CI workflow, README | 22 pytest pass, ruff clean, 315 upstream pass; Home renders; server health 200 | Push to GitHub so CI runs, then Phase 1 |
+| 2026-10-24 | 0 | Branch pushed; CI run 40008407159 green on windows-latest and ubuntu-latest (install, lint, 315 upstream tests, Gatekeeper tests). Added COMMANDS.md; merged `phase-0-foundation` into `main` | CI green; replay commands in COMMANDS.md re-checked (41 ORB hits, TSLA 364.18, TM 29.4/25.5/45.1) | Push `main`, then Phase 1 |
