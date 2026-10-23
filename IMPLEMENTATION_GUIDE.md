@@ -38,7 +38,7 @@ Claude will then:
 
 | Phase | Name | Plan milestone | Status | Started | Finished | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0 | Foundation | M0 | ⬜ | | | |
+| 0 | Foundation | M0 | 🟨 | 2026-10-24 | | All done locally; CI pending a push |
 | 1 | Skill adapter & contracts | M1 | ⬜ | | | |
 | 2 | Storage & background worker | M2 | ⬜ | | | |
 | 3 | Market Overview, Scanner, News | M3 | ⬜ | | | |
@@ -114,11 +114,11 @@ Path prefix: `vendor/day-trader-skill/tests/fixtures/`
 
 ### Tasks
 
-- [ ] **0.1 Install uv**: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`, then `uv --version`.
-- [ ] **0.2 Git**: `git init` in the project root, `main` branch, then branch `phase-0-foundation`.
-- [ ] **0.3 Pin the skills**: `git submodule add https://github.com/Jakeschincariol/day-trader-skill vendor/day-trader-skill`; record the commit hash in the Decision log.
-- [ ] **0.4 Run the upstream tests** once: `uv run python -m unittest discover -s vendor/day-trader-skill/tests -v` (all pass).
-- [ ] **0.5 `pyproject.toml`**:
+- [x] **0.1 Install uv**: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`, then `uv --version`.
+- [x] **0.2 Git**: `git init` in the project root, `main` branch, then branch `phase-0-foundation`.
+- [x] **0.3 Pin the skills**: `git submodule add https://github.com/Jakeschincariol/day-trader-skill vendor/day-trader-skill`; record the commit hash in the Decision log.
+- [x] **0.4 Run the upstream tests** once: `uv run python -m unittest discover -s vendor/day-trader-skill/tests -v` (all pass).
+- [x] **0.5 `pyproject.toml`**:
   ```toml
   [project]
   name = "gatekeeper"
@@ -141,20 +141,20 @@ Path prefix: `vendor/day-trader-skill/tests/fixtures/`
   testpaths = ["tests"]
   ```
   Then `uv sync`.
-- [ ] **0.6 Folders**: `gatekeeper/`, `gatekeeper/skills/`, `worker/`, `app/pages/`, `app/components/`, `data/cache/`, `replay/workspace/`, `scripts/`, `tests/contracts/`, each package with an `__init__.py`.
-- [ ] **0.7 `.gitignore`**: `.env`, `.venv/`, `trader/`, `data/`, `replay/workspace/`, `__pycache__/`, `*.db`, `.pytest_cache/`.
-- [ ] **0.8 `.env.example`**: copy the block from plan Section 13.
-- [ ] **0.9 `gatekeeper/settings.py`**: a `Settings(BaseSettings)` class with `mode`, `skills_dir`, `project_root`, `db_url`, `sec_user_agent`, `core_tickers: list[str]`, `awake_ist: str`, `full_universe_orb: bool`, `notify`, and gate thresholds (Phase 5 fills these). `get_settings()` is cached.
-- [ ] **0.10 `gatekeeper/clock.py`**:
+- [x] **0.6 Folders**: `gatekeeper/`, `gatekeeper/skills/`, `worker/`, `app/pages/`, `app/components/`, `data/cache/`, `replay/workspace/`, `scripts/`, `tests/contracts/`, each package with an `__init__.py`.
+- [x] **0.7 `.gitignore`**: `.env`, `.venv/`, `trader/`, `data/`, `replay/workspace/`, `__pycache__/`, `*.db`, `.pytest_cache/`.
+- [x] **0.8 `.env.example`**: copy the block from plan Section 13.
+- [x] **0.9 `gatekeeper/settings.py`**: a `Settings(BaseSettings)` class with `mode`, `skills_dir`, `project_root`, `db_url`, `sec_user_agent`, `core_tickers: list[str]`, `awake_ist: str`, `full_universe_orb: bool`, `notify`, and gate thresholds (Phase 5 fills these). `get_settings()` is cached.
+- [x] **0.10 `gatekeeper/clock.py`**:
   - `NY = ZoneInfo("America/New_York")`, `IST = ZoneInfo("Asia/Kolkata")`
   - `now_ny(replay_now: datetime | None = None) -> datetime`
   - `to_ist(dt) -> datetime`, `fmt_dual(dt) -> "NY 10:15 · IST 19:45"`
   - `session_phase(dt) -> Literal["closed","premarket","opening_range","entry_window","late","after_close"]` using config times. Holidays and early closes come from `alerts.py clock --json` in Phase 1; for now, weekends only.
-- [ ] **0.11 `.streamlit/config.toml`**: `[server] address = "127.0.0.1"`, `headless = true`; `[theme]` left at defaults.
-- [ ] **0.12 `app/components/clock_bar.py`** and **`app/Home.py`**: show the clock bar and "Gatekeeper: Every trade has to earn its way in."
-- [ ] **0.13 `scripts/dev.ps1`**: starts `uv run python -m worker` (placeholder for now) and `uv run streamlit run app/Home.py` in two windows.
-- [ ] **0.14 CI** `.github/workflows/ci.yml`: matrix `windows-latest`, `ubuntu-latest`; checkout with submodules; `uv sync`; `uv run ruff check .`; `uv run pytest`.
-- [ ] **0.15 Tests**: `tests/test_clock.py`:
+- [x] **0.11 `.streamlit/config.toml`**: `[server] address = "127.0.0.1"`, `headless = true`; `[theme]` left at defaults.
+- [x] **0.12 `app/components/clock_bar.py`** and **`app/Home.py`**: show the clock bar and "Gatekeeper: Every trade has to earn its way in."
+- [x] **0.13 `scripts/dev.ps1`**: starts `uv run python -m worker` (placeholder for now) and `uv run streamlit run app/Home.py` in two windows.
+- [x] **0.14 CI** `.github/workflows/ci.yml`: matrix `windows-latest`, `ubuntu-latest`; checkout with submodules; `uv sync`; `uv run ruff check .`; `uv run pytest`.
+- [x] **0.15 Tests**: `tests/test_clock.py`:
   - 2026-10-19 10:15 NY → 19:45 IST
   - 2026-11-02 10:15 NY → 20:45 IST (after the Nov 1 daylight-saving change)
   - 2027-03-15 10:15 NY → 19:45 IST (after Mar 14)
@@ -169,10 +169,10 @@ uv run streamlit run app/Home.py      # page opens at http://127.0.0.1:8501
 ```
 
 ### Exit criteria
-- [ ] `uv run pytest` green; ruff clean
-- [ ] The upstream skills test suite passes on the pinned commit
-- [ ] The Home page shows the clock bar with correct NY and IST times
-- [ ] CI green on Windows and Ubuntu
+- [x] `uv run pytest` green; ruff clean
+- [x] The upstream skills test suite passes on the pinned commit
+- [x] The Home page shows the clock bar with correct NY and IST times
+- [ ] CI green on Windows and Ubuntu (waiting: needs a push to GitHub)
 
 ---
 
@@ -524,7 +524,14 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | Date | Phase | Decision | Reason |
 | --- | --- | --- | --- |
 | 2026-10-24 | — | Project named **Gatekeeper**, tagline "Every trade has to earn its way in." | Chosen by the user |
-| | 0 | Pinned day-trader-skill commit: `________` | |
+| 2026-10-24 | 0 | Pinned day-trader-skill commit: `3d0f4ef6986f4984b7c6bd46f7ff4f87744c3abd` (2026-10-20, "The Trader skill v2") | 315 upstream tests pass on it |
+| 2026-10-24 | 0 | uv was already installed (0.8.13), and git was already set up on `main` with remote `Rishav123raj/Gatekeeper`; both were kept as they were | No reinstall or `git init` needed |
+| 2026-10-24 | 0 | `pyproject.toml` adds a hatchling build so `gatekeeper`, `worker` and `app` install in editable mode | `streamlit run app/Home.py` only adds `app/` to the import path; installing the packages makes `from gatekeeper...` work from anywhere |
+| 2026-10-24 | 0 | `pydantic-settings>=2.7` (not 2.4) | `NoDecode` is needed so `CORE_TICKERS=A,B,C` reads as a comma list |
+| 2026-10-24 | 0 | The upstream tests run from inside `vendor/day-trader-skill` (`uv run --no-project ...`), not with `-s vendor/...` from the project root | The suite expects its own folder as the working directory |
+| 2026-10-24 | 0 | No `replay/fixtures` symlink; replay reads fixtures directly from `vendor/day-trader-skill/tests/fixtures/` | Windows symlinks need admin rights or developer mode |
+| 2026-10-24 | 0 | Gate threshold settings are deferred to Phase 5 (task 5.4) | They are only defined once the gates exist |
+| 2026-10-24 | 0 | Added `.gitattributes` (LF line endings, CRLF for `.ps1`) and `tests/test_settings.py` | Avoids CRLF churn in diffs; covers the settings parsing |
 
 ---
 
@@ -543,3 +550,4 @@ Append one line per work session (newest at the bottom).
 | Date | Phase | What was done | Tests | Next step |
 | --- | --- | --- | --- | --- |
 | 2026-10-24 | — | Implementation guide written | — | Start Phase 0 |
+| 2026-10-24 | 0 | Skills pinned as a submodule; pyproject, settings, clock (NY/IST, session phase), Home page with clock bar, placeholder worker, dev.ps1, CI workflow, README | 22 pytest pass, ruff clean, 315 upstream pass; Home renders; server health 200 | Push to GitHub so CI runs, then Phase 1 |

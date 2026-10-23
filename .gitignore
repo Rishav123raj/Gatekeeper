@@ -1,0 +1,18 @@
+# secrets
+.env
+
+# environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# runtime state (written by the skills and Gatekeeper)
+trader/
+data/
+replay/workspace/
+*.db
+pytest-cache-files-*/

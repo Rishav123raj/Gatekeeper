@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install
+        run: uv sync
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Upstream skills tests
+        working-directory: vendor/day-trader-skill
+        run: uv run --no-project python -m unittest discover -s tests
+
+      - name: Gatekeeper tests
+        run: uv run pytest
