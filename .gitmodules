@@ -1,3 +1,4 @@
 [submodule "vendor/day-trader-skill"]
 	path = vendor/day-trader-skill
 	url = https://github.com/Jakeschincariol/day-trader-skill
+	ignore = untracked
