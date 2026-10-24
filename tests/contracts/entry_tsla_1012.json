@@ -1,0 +1,43 @@
+{
+  "symbol": "TSLA",
+  "setup": "orb",
+  "side": "buy",
+  "date": "2026-10-19",
+  "interval": "5m",
+  "or_minutes": 15,
+  "now": "2026-10-19 10:12:00",
+  "status": "waiting",
+  "phase": "open",
+  "reason": "last close $361.68 (10:05 bar), $0.50 under the range high $362.18 (-0.14%)",
+  "opening_range": {
+    "high": 362.18,
+    "low": 354.47,
+    "minutes": 15,
+    "bars": 3,
+    "of": 3,
+    "complete": true,
+    "avg_volume": 1658945
+  },
+  "level": 362.18,
+  "trigger": null,
+  "last": {
+    "bar_start": "10:05",
+    "close": 361.68,
+    "vs_level_pct": -0.14
+  },
+  "forming": {
+    "bar_start": "10:10",
+    "closes": "10:15 AM",
+    "price": 364.18
+  },
+  "min_volume_x": null,
+  "prev_close": 354.72,
+  "calendar_known": true,
+  "data_time": "2026-10-19 10:49:45",
+  "opens": "09:30",
+  "closes": "16:00",
+  "early_close": null,
+  "no_entries_before": "09:45",
+  "no_entries_after": "15:30",
+  "bars_closed": 8
+}

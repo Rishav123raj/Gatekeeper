@@ -6,7 +6,7 @@ from datetime import datetime
 
 import streamlit as st
 
-from gatekeeper.clock import PHASE_LABELS, fmt_dual, load_session_times, now_ny, session_phase
+from gatekeeper.clock import PHASE_LABELS, fmt_dual, load_session_times, market_day, now_ny, session_phase
 from gatekeeper.settings import get_settings
 
 
@@ -21,5 +21,11 @@ def clock_line(now: datetime, mode: str, phase: str) -> str:
 def clock_bar() -> None:
     settings = get_settings()
     now = now_ny(st.session_state.get("replay_now"))
-    phase = session_phase(now, load_session_times(settings.trader_path))
-    st.markdown(clock_line(now, settings.mode, phase))
+    day = market_day(now.date())
+    phase = session_phase(now, load_session_times(settings.trader_path), day)
+    line = clock_line(now, settings.mode, phase)
+    if day is not None and day.early_close:
+        line += f" · Early close {day.closes} ({day.early_close})"
+    elif day is not None and not day.trading_day:
+        line += f" · {day.reason}"
+    st.markdown(line)

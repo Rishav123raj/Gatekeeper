@@ -2,7 +2,7 @@
 
 import time
 
-from gatekeeper.clock import PHASE_LABELS, fmt_dual, load_session_times, now_ny, session_phase
+from gatekeeper.clock import PHASE_LABELS, fmt_dual, load_session_times, market_day, now_ny, session_phase
 from gatekeeper.settings import get_settings
 
 
@@ -12,7 +12,7 @@ def main() -> None:
     try:
         while True:
             now = now_ny()
-            phase = session_phase(now, load_session_times(settings.trader_path))
+            phase = session_phase(now, load_session_times(settings.trader_path), market_day(now.date()))
             print(f"{fmt_dual(now)}  {PHASE_LABELS[phase]}", flush=True)
             time.sleep(60)
     except KeyboardInterrupt:

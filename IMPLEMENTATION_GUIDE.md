@@ -39,7 +39,7 @@ Claude will then:
 | Phase | Name | Plan milestone | Status | Started | Finished | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 | Foundation | M0 | ✅ | 2026-10-24 | 2026-10-24 | CI green on Windows + Ubuntu |
-| 1 | Skill adapter & contracts | M1 | ⬜ | | | |
+| 1 | Skill adapter & contracts | M1 | 🟨 | 2026-10-24 | | Done locally (107 tests); CI pending a push |
 | 2 | Storage & background worker | M2 | ⬜ | | | |
 | 3 | Market Overview, Scanner, News | M3 | ⬜ | | | |
 | 4 | Trade Lab | M4 | ⬜ | | | |
@@ -183,14 +183,14 @@ uv run streamlit run app/Home.py      # page opens at http://127.0.0.1:8501
 ### Tasks
 
 **Runner**
-- [ ] **1.1 `gatekeeper/runner.py`**: `RunResult` dataclass (`ok`, `status`, `exit_code`, `data`, `stdout`, `stderr`, `started_at`, `duration_s`, `tool`, `args`).
-- [ ] **1.2** `SkillRunner.run(tool, args, json_out=True, timeout=300, writes_state=False)`:
+- [x] **1.1 `gatekeeper/runner.py`**: `RunResult` dataclass (`ok`, `status`, `exit_code`, `data`, `stdout`, `stderr`, `started_at`, `duration_s`, `tool`, `args`).
+- [x] **1.2** `SkillRunner.run(tool, args, json_out=True, timeout=300, writes_state=False)`:
   - resolves `<skills_dir>/trader-<tool>/<script>.py` from a fixed map (`scanner→scan.py`, `news→news.py`, `entry→entry.py`, `exit→exit.py`, `timemachine→timemachine.py`, `budget→size.py`, `risk→check.py`, `broker→ticket.py`, `alerts→alerts.py`, `analyst→facts.py`, `pelosi→ptr.py`);
   - runs `[sys.executable, script, *args, "--json"?]` with `cwd` = project root (live) or `replay/workspace` (replay);
   - env adds `PYTHONIOENCODING=utf-8`, `PYTHONUTF8=1`, `SEC_USER_AGENT`;
   - takes `FileLock(trader/.gatekeeper.lock, timeout=60)` when `writes_state`;
   - parses stdout as JSON when asked; non-JSON output is `status="error"` with the text kept.
-- [ ] **1.3 Exit-code map** per tool → `ok | empty | blocked | error`:
+- [x] **1.3 Exit-code map** per tool → `ok | empty | blocked | error`:
   - scanner: 0 ok, 1 empty
   - news: 0 ok, 1 empty (nothing new)
   - alerts `check`: 0 ok (something rang), 1 empty
@@ -198,32 +198,32 @@ uv run streamlit run app/Home.py      # page opens at http://127.0.0.1:8501
   - pelosi `new`: 0 ok, 1 empty
   - entry `watch`: 0 triggered, 1 expired
   - Verify each against the script source and record any surprise in the Decision log.
-- [ ] **1.4 Replay injection**: when `mode == "replay"`, append `--now "<replay_now>"` (where the tool supports it) and the `--offline` path from the fixture table above. Keep the mapping in `gatekeeper/replay.py`.
-- [ ] **1.5 `gatekeeper/replay.py`**: `prepare_workspace(replay_now)` wipes and recreates `replay/workspace/trader/`, writes a `config.json` copied from `trader-budget/config.example.json` (budget 5000, paper true), and sets the current replay time.
+- [x] **1.4 Replay injection**: when `mode == "replay"`, append `--now "<replay_now>"` (where the tool supports it) and the `--offline` path from the fixture table above. Keep the mapping in `gatekeeper/replay.py`.
+- [x] **1.5 `gatekeeper/replay.py`**: `prepare_workspace(replay_now)` wipes and recreates `replay/workspace/trader/`, writes a `config.json` copied from `trader-budget/config.example.json` (budget 5000, paper true), and sets the current replay time.
 
 **Contracts**
-- [ ] **1.6 `scripts/snapshot_contracts.py`**: runs every command below in replay mode and saves stdout JSON to `tests/contracts/<name>.json`:
+- [x] **1.6 `scripts/snapshot_contracts.py`**: runs every command below in replay mode and saves stdout JSON to `tests/contracts/<name>.json`:
   `alerts_clock`, `scanner_universe`, `scanner_daily`, `scanner_orb_1015`, `news_tsla`, `entry_tsla_1012`, `entry_tsla_1015`, `exit_plan_or_mid_1r`, `timemachine_run`, `budget_size`, `risk_check_pass`, `broker_show`, `analyst_tsla`, `pelosi_index`.
-- [ ] **1.7 Read the snapshots** and write `gatekeeper/skills/models.py`, one pydantic model per output (`ClockStatus`, `UniverseResult`, `ScanResult`/`ScanHit`, `NewsResult`/`NewsItem`, `EntryStatus`, `ExitPlan`, `TimeMachineResult` (with `mc` bands, sample paths and histogram), `SizeResult`, `RiskReport`/`RiskVerdict`, `Ticket`, `EarningsFacts`, `PtrFiling`/`PtrRow`). Use `ConfigDict(extra="allow")`. Field names come **from the real JSON**, not guesses.
+- [x] **1.7 Read the snapshots** and write `gatekeeper/skills/models.py`, one pydantic model per output (`ClockStatus`, `UniverseResult`, `ScanResult`/`ScanHit`, `NewsResult`/`NewsItem`, `EntryStatus`, `ExitPlan`, `TimeMachineResult` (with `mc` bands, sample paths and histogram), `SizeResult`, `RiskReport`/`RiskVerdict`, `Ticket`, `EarningsFacts`, `PtrFiling`/`PtrRow`). Use `ConfigDict(extra="allow")`. Field names come **from the real JSON**, not guesses.
 
 **Wrappers** (each returns `(model | None, RunResult)`)
-- [ ] **1.8** `skills/scanner.py`: `universe()`, `daily(symbols=None, limit=None)`, `orb(at=None, symbols=None, watchlist=None, max_confirm=200)`
-- [ ] **1.9** `skills/news.py`: `check(tickers=None, hours=None, no_sec=False, show_all=False, dry_run=False)`
-- [ ] **1.10** `skills/entry.py`: `check(symbol, setup="orb", level=None, interval="5m", min_volume_x=None, or_minutes=15, write=False)`, `watchlist()`
-- [ ] **1.11** `skills/exit.py`: `plan(stop="or-mid", target="2R", flat_by=None, entry=None, write=True)`, `show()`
-- [ ] **1.12** `skills/timemachine.py`: `run(until=None, replays=10_000, seed=19, write=True)` plus an explicit-plan variant (`symbol, date, entry, stop, target, entry_time`)
-- [ ] **1.13** `skills/budget.py`: `size(limit=None, write=True)`
-- [ ] **1.14** `skills/risk.py`: `check(no_write=False)`
-- [ ] **1.15** `skills/broker.py`: `show()`, `log()`, `flatten(symbol, qty)`, `fill(symbol, side, qty, price)`, `approve(index, reply)`, `result(...)`. **No broker network calls.**
-- [ ] **1.16** `skills/alerts.py`: `clock()`, `quote(symbols, write=True)`, `add_from_plan()`, `add_rule(...)`, `check()`, `list_rules()`, `reset(rule_id)`
-- [ ] **1.17** `skills/analyst.py`: `facts(tickers, quarters=4, metrics_path=None)`
-- [ ] **1.18** `skills/pelosi.py`: `index(member=None, since=None, year=None)`, `new(member=None, read=False)`
-- [ ] **1.19** Update `clock.session_phase()` to use `alerts.clock()` for holidays and early closes (cached per day).
+- [x] **1.8** `skills/scanner.py`: `universe()`, `daily(symbols=None, limit=None)`, `orb(at=None, symbols=None, watchlist=None, max_confirm=200)`
+- [x] **1.9** `skills/news.py`: `check(tickers=None, hours=None, no_sec=False, show_all=False, dry_run=False)`
+- [x] **1.10** `skills/entry.py`: `check(symbol, setup="orb", level=None, interval="5m", min_volume_x=None, or_minutes=15, write=False)`, `watchlist()`
+- [x] **1.11** `skills/exit.py`: `plan(stop="or-mid", target="2R", flat_by=None, entry=None, write=True)`, `show()`
+- [x] **1.12** `skills/timemachine.py`: `run(until=None, replays=10_000, seed=19, write=True)` plus an explicit-plan variant (`symbol, date, entry, stop, target, entry_time`)
+- [x] **1.13** `skills/budget.py`: `size(limit=None, write=True)`
+- [x] **1.14** `skills/risk.py`: `check(no_write=False)`
+- [x] **1.15** `skills/broker.py`: `show()`, `log()`, `flatten(symbol, qty)`, `fill(symbol, side, qty, price)`, `approve(index, reply)`, `result(...)`. **No broker network calls.**
+- [x] **1.16** `skills/alerts.py`: `clock()`, `quote(symbols, write=True)`, `add_from_plan()`, `add_rule(...)`, `check()`, `list_rules()`, `reset(rule_id)`
+- [x] **1.17** `skills/analyst.py`: `facts(tickers, quarters=4, metrics_path=None)`
+- [x] **1.18** `skills/pelosi.py`: `index(member=None, since=None, year=None)`, `new(member=None, read=False)`
+- [x] **1.19** Update `clock.session_phase()` to use `alerts.clock()` for holidays and early closes (cached per day).
 
 **Tests**
-- [ ] **1.20** `tests/test_runner.py`: exit-code mapping (fake scripts in `tmp_path`), timeout, non-JSON stdout, lock contention (two threads), a path containing spaces.
-- [ ] **1.21** `tests/test_models_contract.py`: every snapshot parses into its model; key fields present.
-- [ ] **1.22** `tests/test_replay_e2e.py`: chain orb → entry → exit → timemachine → budget → risk in a fresh replay workspace and assert **every golden number** in the reference table.
+- [x] **1.20** `tests/test_runner.py`: exit-code mapping (fake scripts in `tmp_path`), timeout, non-JSON stdout, lock contention (two threads), a path containing spaces.
+- [x] **1.21** `tests/test_models_contract.py`: every snapshot parses into its model; key fields present.
+- [x] **1.22** `tests/test_replay_e2e.py`: chain orb → entry → exit → timemachine → budget → risk in a fresh replay workspace and assert **every golden number** in the reference table.
 
 ### Verify
 ```powershell
@@ -232,10 +232,10 @@ uv run pytest tests/test_runner.py tests/test_models_contract.py tests/test_repl
 ```
 
 ### Exit criteria
-- [ ] All 11 tools callable through wrappers in replay mode
-- [ ] Golden-number end-to-end test passes
-- [ ] One live smoke call works: `alerts.clock()` and `entry.check("SPY")` return models (done by hand, not in CI)
-- [ ] Contract snapshots are committed
+- [x] All 11 tools callable through wrappers in replay mode
+- [x] Golden-number end-to-end test passes
+- [x] One live smoke call works: `alerts.clock()` and `entry.check("SPY")` return models (done by hand, not in CI; run on a Saturday, so "closed" and "no-data", see Issue 2)
+- [x] Contract snapshots are committed
 
 ---
 
@@ -532,6 +532,14 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-24 | 0 | No `replay/fixtures` symlink; replay reads fixtures directly from `vendor/day-trader-skill/tests/fixtures/` | Windows symlinks need admin rights or developer mode |
 | 2026-10-24 | 0 | Gate threshold settings are deferred to Phase 5 (task 5.4) | They are only defined once the gates exist |
 | 2026-10-24 | 0 | Added `.gitattributes` (LF line endings, CRLF for `.ps1`) and `tests/test_settings.py` | Avoids CRLF churn in diffs; covers the settings parsing |
+| 2026-10-24 | 1 | **Exit codes (task 1.3): the guide's map was incomplete.** The rule the runner uses: JSON printed → `ok` on exit 0, else the tool's negative answer; no JSON → `error` with the stderr message. Negative answers: `empty` by default (no hits, nothing new, not triggered, market closed, no READY ticket), `blocked` for risk, budget (sizing refused) and broker `approve` ("Not recorded"), `partial` for analyst (some tickers failed). News, analyst and pelosi use exit 2 for errors | Read from every script's source: they print JSON for negative results and exit 1 for both "nothing" and errors, so the exit code alone can't tell them apart |
+| 2026-10-24 | 1 | Scripts run as `python -I -X utf8 <script>` | `-I` (isolated) stops anything in the working folder shadowing a module; `-X utf8` gives UTF-8 output on Windows (`-I` ignores `PYTHONIOENCODING`) |
+| 2026-10-24 | 1 | Commands with no JSON mode (`ticket.py approve/decline/result/fill/flatten/log`, `alerts.py add/list/reset`) are run for their effect, and their results read back from `trader/` files | Confirmed in the scripts' argparse definitions |
+| 2026-10-24 | 1 | The Time Machine's printed JSON leaves out `mc.sample_paths` (160 paths); the wrapper reads them back from the file it writes | `timemachine.py` line 885 drops them from stdout |
+| 2026-10-24 | 1 | Contract `analyst_tsla` became `analyst_aapl`; added contracts `risk_check_block_9`, `alerts_quote`, `alerts_check_1556`, `pelosi_new` (18 in all). Shared generator in `gatekeeper/contracts.py`, used by the snapshot script and the tests (structure-drift and reproducibility checks) | The analyst fixtures have AAPL and KO only, no TSLA |
+| 2026-10-24 | 1 | Replay: `entry.py` reads a `charts/` folder in the workspace (TSLA only); pelosi gets `--year 2026 --today <replay date>`; news gets `--now` as ISO with offset; explicit `--now`/`--offline` from a caller always win | Matches how the skills' own tests call each tool |
+| 2026-10-24 | 1 | Golden-number note, no change: "42 of 231 usable" is for `--min-price 0`; with the default $5 floor it is 41 hits of 222 usable | Both reproduced exactly |
+| 2026-10-24 | 1 | `session_phase` takes the day's `alerts.py clock` status: holidays are closed, and an early close moves the close and the entry cutoff up together (13:00 close → 12:30 cutoff). `market_day()` caches per date and doesn't cache a failed lookup. The clock bar shows early closes and holidays | Task 1.19 |
 
 ---
 
@@ -539,7 +547,8 @@ Record anything that changes the plan, a pinned version, or a golden number.
 
 | # | Opened | Phase | Issue | Status | Resolution |
 | --- | --- | --- | --- | --- | --- |
-| 1 | | | | | |
+| 1 | 2026-10-24 | 1 | In replay, the news fixture's price line is a 10:52 quote (366.48, +3.31% MOVING) even when the replay clock is 10:15 | Known, accepted | A limit of the recorded fixture, not of Gatekeeper; live runs use the real time |
+| 2 | 2026-10-24 | 1 | The live smoke test ran on a Saturday: `alerts.clock()` and `entry.check("SPY")` returned models, but "closed (weekend)" and "no-data" | Open | Re-run `entry.check("SPY")` once during a US session (from 19:15 IST on a weekday; 20:15 IST from Nov 2) to see a live WAITING/TRIGGERED |
 
 ---
 
@@ -552,3 +561,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | — | Implementation guide written | — | Start Phase 0 |
 | 2026-10-24 | 0 | Skills pinned as a submodule; pyproject, settings, clock (NY/IST, session phase), Home page with clock bar, placeholder worker, dev.ps1, CI workflow, README | 22 pytest pass, ruff clean, 315 upstream pass; Home renders; server health 200 | Push to GitHub so CI runs, then Phase 1 |
 | 2026-10-24 | 0 | Branch pushed; CI run 40008407159 green on windows-latest and ubuntu-latest (install, lint, 315 upstream tests, Gatekeeper tests). Added COMMANDS.md; merged `phase-0-foundation` into `main` | CI green; replay commands in COMMANDS.md re-checked (41 ORB hits, TSLA 364.18, TM 29.4/25.5/45.1) | Push `main`, then Phase 1 |
+| 2026-10-24 | 1 | Runner (classification, lock, isolation, timeout, replay injection), replay workspace, 30+ typed models from real output, wrappers for all 11 tools, 18 contract snapshots, NYSE calendar in the session phase | 107 pytest pass (runner 28, contracts 39, golden e2e 18, clock 19, settings 3), ruff clean; every golden number reproduced; contracts byte-identical across runs; live smoke OK (weekend) | Push `phase-1-adapter` so CI runs, then Phase 2 |

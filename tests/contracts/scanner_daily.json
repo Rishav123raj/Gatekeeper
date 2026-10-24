@@ -1,0 +1,96 @@
+{
+  "created_by": "trader-scanner",
+  "created_at": "2026-10-19T13:00:00Z",
+  "mode": "daily",
+  "as_of": "2026-10-16 close",
+  "universe": 19,
+  "scanned": 11,
+  "failed": 0,
+  "source": "yahoo",
+  "filters": {
+    "min_price": 5.0,
+    "min_volume": 1000000
+  },
+  "note": "A scan is a list of charts that match a rule, not a list of stocks to buy.",
+  "hits": [
+    {
+      "symbol": "BAC",
+      "setups": [
+        "oversold"
+      ],
+      "price": 51.23,
+      "close_date": "2026-10-16",
+      "rsi": 24.0,
+      "volume": 8531643
+    },
+    {
+      "symbol": "XOM",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 178.98,
+      "close_date": "2026-10-16",
+      "rsi": 73.0,
+      "volume": 2279958
+    },
+    {
+      "symbol": "JPM",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 339.72,
+      "close_date": "2026-10-16",
+      "rsi": 51.2,
+      "volume": 1182274
+    },
+    {
+      "symbol": "KO",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 93.9,
+      "close_date": "2026-10-16",
+      "rsi": 75.3,
+      "volume": 3680307
+    },
+    {
+      "symbol": "CCL",
+      "setups": [
+        "bull_flag"
+      ],
+      "price": 25.9,
+      "close_date": "2026-10-16",
+      "rsi": 56.8,
+      "volume": 3329022
+    },
+    {
+      "symbol": "RIVN",
+      "setups": [
+        "oversold"
+      ],
+      "price": 12.42,
+      "close_date": "2026-10-16",
+      "rsi": 22.7,
+      "volume": 5955070
+    },
+    {
+      "symbol": "F",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 12.43,
+      "close_date": "2026-10-16",
+      "rsi": 45.2,
+      "volume": 4834984
+    }
+  ],
+  "offline": "daily-spark-2026-10-19.json",
+  "counts": {
+    "requested": 19,
+    "fetched": 19,
+    "illiquid": 8,
+    "short": 0,
+    "scanned": 11,
+    "hits": 7
+  }
+}

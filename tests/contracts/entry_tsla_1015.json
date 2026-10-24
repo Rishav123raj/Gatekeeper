@@ -1,0 +1,54 @@
+{
+  "symbol": "TSLA",
+  "setup": "orb",
+  "side": "buy",
+  "date": "2026-10-19",
+  "interval": "5m",
+  "or_minutes": 15,
+  "now": "2026-10-19 10:15:00",
+  "status": "triggered",
+  "phase": "open",
+  "reason": "the 10:10 bar closed above the range high",
+  "opening_range": {
+    "high": 362.18,
+    "low": 354.47,
+    "minutes": 15,
+    "bars": 3,
+    "of": 3,
+    "complete": true,
+    "avg_volume": 1658945
+  },
+  "level": 362.18,
+  "trigger": {
+    "time": "10:15 AM",
+    "close_time": "10:15",
+    "bar_start": "10:10",
+    "bar_index": 8,
+    "price": 364.18,
+    "close": 364.1759948730469,
+    "volume": 1000057,
+    "volume_x": 0.6,
+    "pct_over": 0.55
+  },
+  "last": {
+    "bar_start": "10:10",
+    "close": 364.18,
+    "vs_level_pct": 0.55
+  },
+  "forming": {
+    "bar_start": "10:15",
+    "closes": "10:20 AM",
+    "price": 365.05
+  },
+  "min_volume_x": null,
+  "prev_close": 354.72,
+  "calendar_known": true,
+  "data_time": "2026-10-19 10:49:45",
+  "opens": "09:30",
+  "closes": "16:00",
+  "early_close": null,
+  "no_entries_before": "09:45",
+  "no_entries_after": "15:30",
+  "bars_closed": 9,
+  "minutes_since": 0
+}

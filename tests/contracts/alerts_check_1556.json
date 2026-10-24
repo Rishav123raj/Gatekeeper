@@ -1,0 +1,25 @@
+{
+  "market": {
+    "now_new_york": "2026-10-19 15:56",
+    "date": "2026-10-19",
+    "weekday": "Monday",
+    "calendar_known": true,
+    "open": true,
+    "reason": "regular session",
+    "early_close": null,
+    "opens": "09:30",
+    "closes": "16:00",
+    "next_open": "2026-10-20 09:30"
+  },
+  "rings": [
+    {
+      "id": "tsla-flat-by",
+      "symbol": "TSLA",
+      "message": "Flat by close: it is 15:56 New York (set for 15:55), the market closes at 16:00. If TSLA is still open, close it: trader-broker flatten --symbol TSLA builds the sell ticket, then trader-risk and your yes."
+    }
+  ],
+  "errors": [],
+  "quotes": {
+    "TSLA": 366.475
+  }
+}

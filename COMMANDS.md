@@ -107,6 +107,16 @@ cd ..\..
 
 **Before every commit:** `uv run ruff check . ; uv run pytest`
 
+### Skill contracts and the recorded numbers (Phase 1)
+
+| What | Command |
+| --- | --- |
+| Every recorded number, end to end (orb → entry → exit → Time Machine → size → risk) | `uv run pytest tests/test_replay_e2e.py -v` |
+| The skills' JSON still parses and hasn't changed shape | `uv run pytest tests/test_models_contract.py -v` |
+| The runner (exit codes, lock, timeouts, replay) | `uv run pytest tests/test_runner.py -v` |
+| Re-save the contract snapshots (after upgrading the skills) | `uv run python scripts/snapshot_contracts.py` |
+| See what changed in them | `git diff tests/contracts` |
+
 ---
 
 ## 5. Run the skills directly (Phase 0)
@@ -164,6 +174,39 @@ uv run python $S\trader-entry\entry.py check TSLA --offline $F\trader-entry\TSLA
 # Time Machine: target 29.4 %, stop 25.5 %, neither 45.1 % (seed 19)
 uv run python $S\trader-timemachine\timemachine.py run --symbol TSLA --date 2026-10-19 --entry 364.18 --stop 358.32 --target 370.04 --entry-time "10:15 AM" --offline $F\trader-timemachine\TSLA-60d5m.json.gz --now "2026-10-19 10:15"
 ```
+
+### The same replay through Gatekeeper's Python layer (Phase 1)
+
+A replay runs in `replay\workspace\`, so your live `trader\` folder is never touched.
+Save this as a file in `scripts\`, for example `scripts\replay_demo.py`, and run
+`uv run python scripts\replay_demo.py`:
+
+```python
+from datetime import datetime
+
+from gatekeeper.replay import prepare_workspace
+from gatekeeper.runner import SkillRunner
+from gatekeeper.skills import budget, entry, exit, risk, timemachine
+
+ctx = prepare_workspace(datetime(2026, 10, 19, 10, 15))   # fresh replay workspace at 10:15 NY
+r = SkillRunner.from_settings(replay=ctx)
+
+status, _ = entry.check("TSLA", write=True, runner=r)
+print(status.status, status.trigger.price)                  # triggered 364.18
+plan, _ = exit.plan(stop="or-mid", target="1R", runner=r)
+print(plan.stop, plan.target)                              # 358.32 370.04
+tm, _ = timemachine.run(runner=r)
+print(tm.verdict)                                          # Close to a coin flip: ...
+size, _ = budget.size(runner=r)
+print(size.sizing.qty, size.sizing.max_loss)               # 8 46.88
+report, res = risk.check(runner=r)
+print(res.status, report.results[0].verdict)               # ok PASS
+```
+
+Every wrapper returns `(model, run_result)`. `run_result.status` is `ok`, `empty`
+(a valid "no": no hits, not triggered, market closed), `blocked` (risk BLOCK,
+sizing refused), `partial` or `error` (with the reason in `run_result.message`).
+Leave out `replay=ctx` to run live.
 
 > From Phase 3, set `GATEKEEPER_MODE=replay` in `.env` and use the dashboard's time slider instead.
 
@@ -246,8 +289,6 @@ These commands will work once their phase is built. This file is updated at the 
 
 | Phase | Command | What it does |
 | --- | --- | --- |
-| 1 | `uv run python scripts/snapshot_contracts.py` | Saves every skill's JSON output from the recorded day as test references |
-| 1 | `uv run pytest tests/test_replay_e2e.py -v` | Checks every recorded number end to end |
 | 2 | `uv run python -m worker` | The real scheduler (scans, news, entries, alerts on a New York schedule) |
 | 2 | `uv run python -m worker --replay --from 09:30 --to 10:30 --speed 600` | Fast-forwards a recorded day through the worker |
 | 3 | `GATEKEEPER_MODE=replay` in `.env` | Dashboard in replay mode, with a time slider |

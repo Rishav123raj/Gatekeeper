@@ -1,0 +1,137 @@
+[
+  {
+    "ticker": "AAPL",
+    "result": {
+      "entity": "Apple Inc.",
+      "cik": "0000320193",
+      "rows": [
+        {
+          "end": "2026-06-27",
+          "start": "2026-03-29",
+          "fiscal": "Q3 2026",
+          "derived": false,
+          "revenue": 109417000000,
+          "gross_profit": 54770000000,
+          "operating_income": 35695000000,
+          "net_income": 29789000000,
+          "eps_diluted": 2.02,
+          "gross_margin": 50.1,
+          "operating_margin": 32.6,
+          "net_margin": 27.2,
+          "revenue_yoy": 16.4,
+          "net_income_yoy": 27.1,
+          "eps_yoy": 28.7,
+          "filed": "2026-07-31",
+          "form": "10-Q"
+        },
+        {
+          "end": "2026-03-28",
+          "start": "2025-12-28",
+          "fiscal": "Q2 2026",
+          "derived": false,
+          "revenue": 111184000000,
+          "gross_profit": 54781000000,
+          "operating_income": 35885000000,
+          "net_income": 29578000000,
+          "eps_diluted": 2.01,
+          "gross_margin": 49.3,
+          "operating_margin": 32.3,
+          "net_margin": 26.6,
+          "revenue_yoy": 16.6,
+          "net_income_yoy": 19.4,
+          "eps_yoy": 21.8,
+          "filed": "2026-05-01",
+          "form": "10-Q"
+        },
+        {
+          "end": "2025-12-27",
+          "start": "2025-09-28",
+          "fiscal": "Q1 2026",
+          "derived": false,
+          "revenue": 143756000000,
+          "gross_profit": 69231000000,
+          "operating_income": 50852000000,
+          "net_income": 42097000000,
+          "eps_diluted": 2.84,
+          "gross_margin": 48.2,
+          "operating_margin": 35.4,
+          "net_margin": 29.3,
+          "revenue_yoy": 15.7,
+          "net_income_yoy": 15.9,
+          "eps_yoy": 18.3,
+          "filed": "2026-01-30",
+          "form": "10-Q"
+        },
+        {
+          "end": "2025-09-27",
+          "start": "2025-06-29",
+          "fiscal": "Q4 2025",
+          "derived": true,
+          "revenue": 102466000000,
+          "gross_profit": 48341000000,
+          "operating_income": 32427000000,
+          "net_income": 27466000000,
+          "eps_diluted": 1.84,
+          "gross_margin": 47.2,
+          "operating_margin": 31.6,
+          "net_margin": 26.8,
+          "revenue_yoy": 7.9,
+          "net_income_yoy": 86.4,
+          "eps_yoy": 89.7,
+          "filed": "2025-10-31",
+          "form": "10-K"
+        }
+      ],
+      "ttm": {
+        "revenue": 466823000000,
+        "net_income": 128930000000,
+        "eps_diluted": 8.71
+      },
+      "concepts": {
+        "revenue": [
+          "RevenueFromContractWithCustomerExcludingAssessedTax"
+        ],
+        "cost_of_revenue": [
+          "CostOfGoodsAndServicesSold"
+        ],
+        "gross_profit": [
+          "GrossProfit"
+        ],
+        "operating_income": [
+          "OperatingIncomeLoss"
+        ],
+        "net_income": [
+          "NetIncomeLoss"
+        ],
+        "eps_diluted": [
+          "EarningsPerShareDiluted"
+        ]
+      }
+    },
+    "filings": {
+      "report": {
+        "form": "10-Q",
+        "filed": "2026-07-31",
+        "period": "2026-06-27",
+        "accession": "0000320193-26-000020",
+        "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000020/aapl-20260627.htm"
+      },
+      "earnings_8k": {
+        "form": "8-K",
+        "filed": "2026-07-30",
+        "accession": "0000320193-26-000018",
+        "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000018/aapl-20260730.htm",
+        "exhibit": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000018/a8-kex991q3202606272026.htm",
+        "index": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000018/0000320193-26-000018-index.htm"
+      }
+    },
+    "changes": [
+      "Quarter ending 2026-06-27: revenue $109.42B (+16.4% vs a year earlier), net income $29.79B (+27.1%), diluted EPS $2.02 (+28.7%).",
+      "Gross margin 50.1% (+0.8 points vs the quarter before).",
+      "Operating margin 32.6% (+0.3 points vs the quarter before).",
+      "Net margin 27.2% (+0.6 points vs the quarter before).",
+      "Revenue -1.6% vs the quarter before (many businesses are seasonal: compare with a year earlier first)."
+    ],
+    "note": null
+  }
+]

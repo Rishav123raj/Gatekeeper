@@ -1,0 +1,21 @@
+{
+  "count": 17,
+  "rows": 36,
+  "files_created": "2026-10-19 10:01",
+  "dropped": {
+    "ETF": 2,
+    "unit": 2,
+    "warrant": 1,
+    "right": 2,
+    "depositary": 1,
+    "preferred": 1,
+    "unit or right": 1,
+    "test issue": 2,
+    "unit / warrant / right suffix": 2,
+    "not a plain ticker": 1,
+    "note": 1,
+    "bond": 1,
+    "coupon": 2
+  },
+  "out": "trader/universe.txt"
+}
