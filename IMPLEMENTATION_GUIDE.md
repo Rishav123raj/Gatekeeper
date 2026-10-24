@@ -41,7 +41,7 @@ Claude will then:
 | 0 | Foundation | M0 | ✅ | 2026-10-24 | 2026-10-24 | CI green on Windows + Ubuntu |
 | 1 | Skill adapter & contracts | M1 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40065638051 green on Windows + Ubuntu |
 | 2 | Storage & background worker | M2 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40074262315 green on Windows + Ubuntu |
-| 3 | Market Overview, Scanner, News | M3 | 🟨 | 2026-10-24 | | Built locally (194 tests); CI pending a push |
+| 3 | Market Overview, Scanner, News | M3 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40108052325 green on Windows + Ubuntu (after the Windows pin-order fix, Issue 6) |
 | 4 | Trade Lab | M4 | ⬜ | | | |
 | 5 | Go / No-Go engine | M5 | ⬜ | | | |
 | 6 | Risk, Size, Positions, Alerts | M6 | ⬜ | | | |
@@ -592,3 +592,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 2 | Branch pushed; CI run 40074262315 green on windows-latest and ubuntu-latest (lint, 315 upstream tests, 145 Gatekeeper tests). Merged `phase-2-worker` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 3 |
 | 2026-10-24 | 3 | Chart reader (`yahoo.py`), market context (`regime.py`) and the real `regime` job; dashboard replay that drives the simulator from the time slider; Home (tiles, context label, breadth, budget, what changed, worker health), Scanner (daily / ORB tabs, filters, pin, open in Trade Lab, run scan now), Watchlist & News (pins, moves, entry status, earnings date, news stream); shared sidebar, clock bar and footer; Phase 3 checks in `validate.py`; COMMANDS.md dashboard section | 194 pytest pass (regime 25, yahoo 9, tables 5, UI smoke 10); ruff clean; validate.py --phase 3 --live 4/4 PASS (41 hits + TSLA, 3 headlines, server health, live tiles) | Push `phase-3-screens` so CI runs, then Phase 4 |
 | 2026-10-24 | 3 | Phase 3 CI failed on Windows (run 40106465744). Made CI post failures as annotations + per-test timeout; the next run (40107394227) showed a pin-ordering bug from equal timestamps. Fixed (rowid order), added a test, made the UI test clean up | 195 pytest pass locally with --timeout=600 | Push the fix; when CI is green, merge to `main` |
+| 2026-10-24 | 3 | CI run 40108052325 green on windows-latest and ubuntu-latest (lint, 315 upstream tests, 195 Gatekeeper tests with the 600 s timeout). Merged `phase-3-screens` into `main` | CI green | Push `main`; Issue 4 (a weekday live session, worker + dashboard) when convenient; then Phase 4 |
