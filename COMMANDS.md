@@ -75,7 +75,7 @@ The dashboard opens at **http://127.0.0.1:8501**. It is bound to your own PC onl
 | **Home** (Market Overview) | SPY / QQQ / IWM / VIX tiles with sparklines, the market-context label and its reasons, breakout breadth (gauge and line), today's risk budget, what changed (breakouts, important news, alerts), worker health. Refreshes every 30 s live |
 | **Scanner** | Today's pre-market and opening-range scans: hits with range, % over, breakout time (NY and IST), news and earnings badges. Select rows to **Pin** them or **Open in Trade Lab**; **Run scan now** runs the scan job once |
 | **Watchlist & News** | Pinned tickers with last price, % vs yesterday, MOVING, entry status, next earnings date (set by hand); the news stream with tag chips, `!` 8-K badges and links, filterable by ticker, tag and importance |
-| **Trade Lab** | Arrives in Phase 4 |
+| **Trade Lab** | One ticker end to end: the 5-minute chart with the opening range, the entry trigger, entry / stop / target lines and the flat-by time; **Check entry** (entry.py); **Plan exit** with a live preview (exit.py, refusals shown as the tool says them); **Run Time Machine** (odds bar, fan chart, closing-price histogram, history and verdict verbatim, seed); **Compare** up to 4 stop / target variants without touching `trader/plan.json`. A banner appears if `trader/plan.json` changes outside the page (Claude chat). Nothing on this page places an order |
 
 **LIVE / REPLAY** is a switch in the sidebar. In REPLAY a time slider (07:00 to 16:10
 New York) plays back the recorded day, Mon 2026-10-19, with no internet: moving the
@@ -180,7 +180,9 @@ One command checks everything a phase delivered and prints a PASS / FAIL line pe
 
 | What | Command |
 | --- | --- |
-| **Validate Phase 3** (offline) | `uv run python scripts/validate.py --phase 3` |
+| **Validate Phase 4** (offline) | `uv run python scripts/validate.py --phase 4` |
+| Validate Phase 4, including the live Trade Lab check | `uv run python scripts/validate.py --phase 4 --live` |
+| Validate Phase 3 (offline) | `uv run python scripts/validate.py --phase 3` |
 | Validate Phase 3, including the live Home check | `uv run python scripts/validate.py --phase 3 --live` |
 | Validate Phase 2 (offline) | `uv run python scripts/validate.py --phase 2` |
 | Validate Phase 2, including the live check | `uv run python scripts/validate.py --phase 2 --live` |
@@ -204,6 +206,19 @@ Phase 1's checks:
 It exits 0 when every check passed. During a US session (from 19:15 IST on
 weekdays, 20:15 IST from Nov 2), `--live` shows SPY's real status, for example
 `waiting` or `triggered`. On weekends and at night it shows `closed` / `no-data`.
+
+Phase 4's checks:
+
+| Check | What it proves |
+| --- | --- |
+| charts and Trade Lab logic | The candle chart's levels, trigger marker and flat-by line; the odds bar, fan and histogram; the stop / target preview matches exit.py's rounding; the comparison never writes `trader/plan.json` and its 1R row equals the main run |
+| Trade Lab page in replay | At 10:15: TRIGGERED at $364.18 (bar 8); plan $358.32 / $370.04, risk $5.86; Time Machine to the close 29.4 / 25.5 / 45.1 %, green 51.7 %, avg R +0.034, history 33 fired (13 / 15 / 5), "Close to a coin flip" verbatim, seed 19; compare 1R / 2R / or-low; the external-plan banner and reload |
+| live: Trade Lab chart and entry status (`--live`) | A real TSLA chart on its own session's day, and a live entry status from entry.py |
+
+**Trade Lab in replay, step by step:** sidebar → REPLAY, slider at 10:15 → Trade Lab → TSLA →
+**Check entry** → Target **1R** → **Plan exit** → End each replay at **the close (16:00)** →
+**Run Time Machine** → **Compare**. The page shows every recorded number above. With the
+default end (your flat-by time, 15:55) the odds are 29.2 / 24.2 / 46.6 %.
 
 Phase 3's checks:
 

@@ -1,41 +1,20 @@
 """The pages load in replay at 10:15 on the recorded day and show the recorded numbers."""
 
-from datetime import datetime
-
 import pytest
 from streamlit.testing.v1 import AppTest
 
 from gatekeeper import store
-from gatekeeper.clock import NY
 from gatekeeper.db import get_engine, session
 from gatekeeper.settings import ROOT, get_settings
+from tests.conftest import T_1015
 from worker.scheduler import sync_replay
 
 PAGES = ["app/Home.py", "app/pages/1_Scanner.py", "app/pages/2_Watchlist_News.py", "app/pages/3_Trade_Lab.py"]
-T_1015 = datetime(2026, 10, 19, 10, 15, tzinfo=NY)
 HEADLINES = {
     "Meta and Musk earnings and September pending home sales": ":red-badge[earnings]",
     "Tesla-SpaceX Merger Mania Strikes Wall Street Ahead of Earnings": ":violet-badge[deal]",
     "Tech Stock Rebound Nudges US Equity Futures Mostly Higher Pre-Bell": ":gray-badge[macro]",
 }
-
-
-@pytest.fixture(scope="module")
-def replay_env(tmp_path_factory):
-    """Replay mode, a throwaway database and workspace, already played to 10:15."""
-    tmp = tmp_path_factory.mktemp("ui")
-    mp = pytest.MonkeyPatch()
-    mp.setenv("GATEKEEPER_MODE", "replay")
-    mp.setenv("DB_URL", f"sqlite:///{(tmp / 'ui.db').as_posix()}")
-    mp.setenv("REPLAY_WORKSPACE", str(tmp / "ws"))
-    get_settings.cache_clear()
-    get_engine.cache_clear()
-    msg = sync_replay(get_settings(), get_engine(), T_1015)
-    yield msg
-    get_engine().dispose()
-    mp.undo()
-    get_settings.cache_clear()
-    get_engine.cache_clear()
 
 
 def run(page):

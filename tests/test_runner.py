@@ -168,8 +168,11 @@ def test_unknown_tool(make_runner):
 
 
 def test_sec_user_agent_is_passed(make_runner):
-    r = make_runner("analyst", "print(json.dumps(os.environ.get('SEC_USER_AGENT')))",
-                    env={"SEC_USER_AGENT": "Ada ada@example.org"})
+    r = make_runner(
+        "analyst",
+        "print(json.dumps(os.environ.get('SEC_USER_AGENT')))",
+        env={"SEC_USER_AGENT": "Ada ada@example.org"},
+    )
     assert r.run("analyst", ["AAPL"]).data == "Ada ada@example.org"
 
 

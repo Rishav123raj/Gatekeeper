@@ -268,6 +268,45 @@ def check_live_home():
     return len(real) == 4, " · ".join(f"{k} {v}" for k, v in tiles.items())
 
 
+# --- Phase 4 ---------------------------------------------------------------------------------
+
+
+def check_live_trade_lab():
+    """The Trade Lab live: a real TSLA chart on its own session's day, and a live entry status."""
+    import json
+    import os
+
+    from streamlit.testing.v1 import AppTest
+
+    from gatekeeper.db import get_engine
+    from gatekeeper.settings import get_settings
+
+    with tempfile.TemporaryDirectory() as tmp:
+        old = {k: os.environ.get(k) for k in ("GATEKEEPER_MODE", "DB_URL")}
+        os.environ.update(GATEKEEPER_MODE="live", DB_URL=f"sqlite:///{(Path(tmp) / 't.db').as_posix()}")
+        get_settings.cache_clear()
+        get_engine.cache_clear()
+        try:
+            at = AppTest.from_file(str(ROOT / "app" / "pages" / "3_Trade_Lab.py"), default_timeout=120).run()
+            if at.exception:
+                return False, str(at.exception[0].value)
+            spec = json.loads(at.get("plotly_chart")[0].proto.spec)
+            at.button(key="lab_check").click().run()
+            status = next((m.value for m in at.markdown if "badge[" in m.value and "checked" in m.value), "")
+        finally:
+            get_engine().dispose()
+            for k, v in old.items():
+                os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+            get_settings.cache_clear()
+            get_engine.cache_clear()
+    candles = spec["data"][0]
+    bars_day = candles["x"][-1][:10] if candles.get("x") else ""
+    window_day = spec["layout"]["xaxis"].get("range", [""])[0][:10]
+    ok = len(candles.get("x", [])) > 0 and bars_day == window_day and bool(status)
+    entry = status.split("]")[0].split("[")[-1] if status else "no status"
+    return ok, f"{len(candles.get('x', []))} bars of {bars_day}, window {window_day}, entry {entry}"
+
+
 PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
     # (name, check, needs internet)
     0: [
@@ -301,6 +340,11 @@ PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
         ("pages in replay at 10:15 (41 hits, headlines)", pytest("tests/test_ui_smoke.py"), False),
         ("dashboard server starts", check_server, False),
         ("live: Home with real index tiles", check_live_home, True),
+    ],
+    4: [
+        ("charts and Trade Lab logic", pytest("tests/test_charts.py", "tests/test_lab.py"), False),
+        ("Trade Lab page in replay (golden numbers)", pytest("tests/test_ui_trade_lab.py"), False),
+        ("live: Trade Lab chart and entry status", check_live_trade_lab, True),
     ],
 }
 

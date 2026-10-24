@@ -12,9 +12,10 @@ from sqlalchemy.engine import Engine
 
 from app import state
 from app.components.clock_bar import clock_bar
-from gatekeeper import store
+from gatekeeper import store, yahoo
 from gatekeeper.clock import fmt_dual
 from gatekeeper.db import get_engine, session
+from gatekeeper.runner import SkillRunner
 from gatekeeper.settings import Settings, get_settings
 from worker.jobs import JobContext
 
@@ -46,6 +47,14 @@ class Page:
             return live_context(self.settings, self.engine)
         ctx, _ = replay_context(self.settings, self.engine, self.now.date(), self.now.time(), fresh=False)
         return ctx
+
+    def runner(self, job: str = "dashboard") -> SkillRunner:
+        """A skill runner at the page's clock (the replay time in replay), logging each run."""
+        return self.job_context().runner(job)
+
+    def yahoo(self) -> yahoo.Source:
+        """Bars for charts: live Yahoo, or the recordings cut at the replay time."""
+        return self.job_context().yahoo()
 
 
 def setup_page(title: str, icon: str = "🛡️") -> Page:

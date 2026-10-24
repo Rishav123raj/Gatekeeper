@@ -42,7 +42,7 @@ Claude will then:
 | 1 | Skill adapter & contracts | M1 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40065638051 green on Windows + Ubuntu |
 | 2 | Storage & background worker | M2 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40074262315 green on Windows + Ubuntu |
 | 3 | Market Overview, Scanner, News | M3 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40108052325 green on Windows + Ubuntu (after the Windows pin-order fix, Issue 6) |
-| 4 | Trade Lab | M4 | ⬜ | | | |
+| 4 | Trade Lab | M4 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
 | 5 | Go / No-Go engine | M5 | ⬜ | | | |
 | 6 | Risk, Size, Positions, Alerts | M6 | ⬜ | | | |
 | 7 | Journal & Research | M7 | ⬜ | | | |
@@ -316,11 +316,11 @@ uv run python scripts/validate.py --phase 3 --live   # every Phase 3 check, PASS
 **Goal:** the core page: see the setup on a chart, plan the exit, and get the honest odds.
 
 ### Tasks
-- [ ] **4.1 `charts.candles_with_levels(df, or_high, or_low, entry, stop, target, trigger_ts, flat_by)`**: Plotly candlesticks plus a volume subplot, a shaded opening-range band, a trigger marker, entry/stop/target lines with labels, and a flat-by vertical line. The x-axis is New York time, with IST in the hover.
-- [ ] **4.2 `charts.tm_odds_bar(tm)`**: stacked bar for target / stop / neither, with green as a separate marker.
-- [ ] **4.3 `charts.tm_fan(tm)`**: percentile bands from `mc`, about 50 of the sample paths drawn faintly, stop and target lines.
-- [ ] **4.4 `charts.tm_close_hist(tm)`**: the 24-bin histogram of the price at `--until`.
-- [ ] **4.5 `app/pages/3_Trade_Lab.py` layout**:
+- [x] **4.1 `charts.candles_with_levels(df, or_high, or_low, entry, stop, target, trigger_ts, flat_by)`**: Plotly candlesticks plus a volume subplot, a shaded opening-range band, a trigger marker, entry/stop/target lines with labels, and a flat-by vertical line. The x-axis is New York time, with IST in the hover.
+- [x] **4.2 `charts.tm_odds_bar(tm)`**: stacked bar for target / stop / neither, with green as a separate marker.
+- [x] **4.3 `charts.tm_fan(tm)`**: percentile bands from `mc`, about 50 of the sample paths drawn faintly, stop and target lines.
+- [x] **4.4 `charts.tm_close_hist(tm)`**: the 24-bin histogram of the price at `--until`.
+- [x] **4.5 `app/pages/3_Trade_Lab.py` layout**:
   1. Symbol picker (pinned + scanner hits + free text).
   2. Chart (4.1), auto-refreshing every 60 s in live mode.
   3. **Entry panel**: setup (orb/level + level input), interval, volume multiple → `entry.check(write=True)`; a status line exactly as the tool says it.
@@ -328,17 +328,24 @@ uv run python scripts/validate.py --phase 3 --live   # every Phase 3 check, PASS
   5. **Time Machine panel**: **Run** with `until = flat_by` → odds bar, fan, histogram, then the history line and the verdict lines **verbatim**, plus the seed. Saves `TmResult` linked to the plan.
   6. **Compare plans**: up to 4 stop/target variants. Each variant runs `timemachine.run` through the explicit-plan arguments (it does **not** overwrite `trader/plan.json`), with the same seed; results go in a comparison table.
   7. Placeholder for the trade-level Go / No-Go panel (Phase 5).
-- [ ] **4.6** Long Time Machine runs use `st.status` with a spinner, and the button is disabled while running.
-- [ ] **4.7** A banner when `trader/plan.json` changed outside the dashboard (for example from Claude chat): "Plan updated externally, reload?"
+- [x] **4.6** Long Time Machine runs use `st.status` with a spinner, and the button is disabled while running.
+- [x] **4.7** A banner when `trader/plan.json` changed outside the dashboard (for example from Claude chat): "Plan updated externally, reload?"
 
 ### Tests
-- [ ] **4.8** `tests/test_charts.py`: figures build from the replay data; trace counts and level values are correct.
-- [ ] **4.9** Extend the UI smoke test: Trade Lab replay at 10:15 with TSLA renders the trigger marker at 364.18; Plan exit gives 358.32 / 370.04; Time Machine shows 29.4 / 25.5 / 45.1 and "Close to a coin flip".
+- [x] **4.8** `tests/test_charts.py`: figures build from the replay data; trace counts and level values are correct.
+- [x] **4.9** Extend the UI smoke test: Trade Lab replay at 10:15 with TSLA renders the trigger marker at 364.18; Plan exit gives 358.32 / 370.04; Time Machine shows 29.4 / 25.5 / 45.1 and "Close to a coin flip".
+
+### Verify
+```powershell
+uv run pytest tests/test_charts.py tests/test_lab.py tests/test_ui_trade_lab.py -v
+uv run streamlit run app/Home.py      # REPLAY at 10:15 → Trade Lab → TSLA → Check entry → 1R → Plan exit → close → Run
+uv run python scripts/validate.py --phase 4 --live   # every Phase 4 check, PASS / FAIL
+```
 
 ### Exit criteria
-- [ ] All replay golden numbers appear on the page
-- [ ] Comparison of 1R vs 2R vs or-low stop works without touching `trader/plan.json`
-- [ ] Live: a pinned ticker's chart and entry status update during the session
+- [x] All replay golden numbers appear on the page (entry 364.18 bar 8; plan 358.32 / 370.04, risk 5.86; Time Machine to the close 29.4 / 25.5 / 45.1 %, green 51.7 %, avg R +0.034, history 33 / 13 / 15 / 5, "Close to a coin flip"; `tests/test_ui_trade_lab.py`)
+- [x] Comparison of 1R vs 2R vs or-low stop works without touching `trader/plan.json` (byte-for-byte check in `test_lab.py` and `test_ui_trade_lab.py`)
+- [x] Live: a pinned ticker's chart and entry status (real TSLA chart, 79 bars, and a live entry.py status; checked on Saturday 2026-10-24, so the status was NO-DATA "closed today (weekend)" and the chart showed Friday's session; seeing it move bar by bar during a session is part of Issue 4)
 
 ---
 
@@ -561,6 +568,12 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-24 | 3 | New: `gatekeeper/yahoo.py` (live with query2→query1 fallback and a 60 s cache, plus a replay reader that shows only bars closed by the replay time), `REPLAY_WORKSPACE` setting, `app/state.py` and `app/components/page.py` (shared page setup), a Trade Lab placeholder page so "Open in Trade Lab" has somewhere to go | Needed by the pages |
 | 2026-10-24 | 3 | Streamlit 1.66: `use_container_width` is deprecated (full width is the default), so it isn't used; dataframe row selection and markdown badges (`:red-badge[...]`) are used for selection and tag chips | Avoids deprecation warnings |
 | 2026-10-24 | 3 | CI now posts failing tests and the first traceback as **annotations** (`scripts/ci_failure_annotation.py`), readable without admin rights, and runs pytest with a 600 s per-test timeout (`pytest-timeout`, a stack dump instead of a hang) | GitHub job logs need admin rights to download; Issue 5 |
+| 2026-10-24 | 4 | The Time Machine panel ends replays at the plan's flat-by time by default (as task 4.5 says), with "the close (16:00)" as an option. The golden numbers (29.4 / 25.5 / 45.1) are for the close; at 15:55 they are 29.2 / 24.2 / 46.6 | Both are shown correctly; the tests use the close to match the reference table |
+| 2026-10-24 | 4 | The comparison plans each variant with `exit.py` **without** `--write` (exact stops and targets, refusals as the tool says them), then replays it as explicit values; the Time Machine's `--stop-rule` follows the plan's rule (or_mid / or_low / pct, else auto) | Never touches `trader/plan.json`; the 1R variant reproduces the main run exactly |
+| 2026-10-24 | 4 | The stop / target preview is computed locally (stop rounded down to the cent, target half up, like exit.py) and labelled "exit.py decides"; the ATR preview is left to exit.py | Task 4.5 asks for a local preview only |
+| 2026-10-24 | 4 | Not triggered yet: "Plan ahead at entry price" passes `--entry` to exit.py, as the skill allows | exit.py refuses to plan a waiting entry without a price |
+| 2026-10-24 | 4 | The chart's time window, trigger marker and flat-by line use the date of the bars, not the calendar day | Found in the live check: on a weekend the window was Saturday while the bars were Friday's, so no candles showed |
+| 2026-10-24 | 4 | New `gatekeeper/lab.py` (preview, skill arguments, compare, plan-file hash) and `Page.runner()` / `Page.yahoo()`; the replay-mode UI fixture moved to `tests/conftest.py` (shared by the UI test modules, `tests/` is now a package) | Keeps the page thin and the logic testable |
 
 ---
 
@@ -593,3 +606,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 3 | Chart reader (`yahoo.py`), market context (`regime.py`) and the real `regime` job; dashboard replay that drives the simulator from the time slider; Home (tiles, context label, breadth, budget, what changed, worker health), Scanner (daily / ORB tabs, filters, pin, open in Trade Lab, run scan now), Watchlist & News (pins, moves, entry status, earnings date, news stream); shared sidebar, clock bar and footer; Phase 3 checks in `validate.py`; COMMANDS.md dashboard section | 194 pytest pass (regime 25, yahoo 9, tables 5, UI smoke 10); ruff clean; validate.py --phase 3 --live 4/4 PASS (41 hits + TSLA, 3 headlines, server health, live tiles) | Push `phase-3-screens` so CI runs, then Phase 4 |
 | 2026-10-24 | 3 | Phase 3 CI failed on Windows (run 40106465744). Made CI post failures as annotations + per-test timeout; the next run (40107394227) showed a pin-ordering bug from equal timestamps. Fixed (rowid order), added a test, made the UI test clean up | 195 pytest pass locally with --timeout=600 | Push the fix; when CI is green, merge to `main` |
 | 2026-10-24 | 3 | CI run 40108052325 green on windows-latest and ubuntu-latest (lint, 315 upstream tests, 195 Gatekeeper tests with the 600 s timeout). Merged `phase-3-screens` into `main` | CI green | Push `main`; Issue 4 (a weekday live session, worker + dashboard) when convenient; then Phase 4 |
+| 2026-10-24 | 4 | Trade Lab charts (candles with levels, odds bar, fan, histogram), `gatekeeper/lab.py` (preview, compare, plan-file hash), the Trade Lab page (symbol picker, live chart, entry, exit with preview, Time Machine, compare, external-plan banner, Go / No-Go placeholder); fixed the chart window to use the bars' date (found live); Phase 4 checks in `validate.py`; COMMANDS.md Trade Lab notes | 216 pytest pass (charts 5, lab 9, Trade Lab page 7); ruff clean; validate.py --phase 4 --live 3/3 PASS | Push `phase-4-trade-lab` so CI runs, then Phase 5 |
