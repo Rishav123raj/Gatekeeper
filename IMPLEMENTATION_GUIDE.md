@@ -44,7 +44,7 @@ Claude will then:
 | 3 | Market Overview, Scanner, News | M3 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40108052325 green on Windows + Ubuntu (after the Windows pin-order fix, Issue 6) |
 | 4 | Trade Lab | M4 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40115151903 green on Windows + Ubuntu |
 | 5 | Go / No-Go engine | M5 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40118467980 green on Windows + Ubuntu |
-| 6 | Risk, Size, Positions, Alerts | M6 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
+| 6 | Risk, Size, Positions, Alerts | M6 | ✅ | 2026-10-24 | 2026-10-25 | CI run 40127238785 green on Windows + Ubuntu |
 | 7 | Journal & Research | M7 | ⬜ | | | |
 | P | Paper-trading period (4 to 8 weeks) | — | ⬜ | | | Usage, not code |
 | 8 | Alpaca paper execution (optional) | M8 | ⬜ | | | |
@@ -643,3 +643,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 5 | Go / No-Go engine (`gatekeeper/readiness.py`: 9 day + 9 trade gates, pure, thresholds in `GATE_*` settings, context builders), store (readiness with repeat-skipping, decisions), DB column upgrades for older databases, the panel / ticket / decision form (`app/components/gates.py`), Home day panel, Trade Lab Size & check + trade panel; Phase 5 checks in `validate.py`; COMMANDS.md Go / No-Go section; `.env.example` thresholds | 307 pytest pass (readiness 80, scenarios 5, Trade Lab UI 11, wording 2); ruff clean; validate.py --phase 5 --live 5/5 PASS (all four scenarios; DB upgrade on a copy of the real database) | Push `phase-5-go-no-go` so CI runs, then Phase 6 |
 | 2026-10-24 | 5 | CI run 40118467980 green on windows-latest (2 min 9 s) and ubuntu-latest (1 min 15 s). Merged `phase-5-go-no-go` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 6 |
 | 2026-10-24 | 6 | Risk & Size page (limits, sizing chart, live check.py, ledger, What-if sandbox), Positions & Alerts page (flat-by countdown NY/IST, positions in R, closing ticket, fills by hand, alert rules, fired history), Trade Lab Add plan alerts, `gatekeeper/notify.py` (toast / Telegram) wired into the alerts job, `gatekeeper/sandbox.py`; fixed the Phase 1 portfolio model; a real toast handed to Windows; Phase 6 checks in `validate.py`; COMMANDS.md section | 335 pytest pass (notify 12, sandbox 5, alert worker 4, pages 7); ruff clean; validate.py --phase 6 --live 3/3 PASS | Push `phase-6-risk-positions-alerts` so CI runs; confirm the toast (Issue 7); then Phase 7 |
+| 2026-10-25 | 6 | CI run 40127238785 green on windows-latest (1 min 32 s) and ubuntu-latest (52 s). Merged `phase-6-risk-positions-alerts` into `main` | CI green | Push `main`; confirm the toast (Issue 7) and a weekday live session (Issue 4) when convenient; then Phase 7 |
