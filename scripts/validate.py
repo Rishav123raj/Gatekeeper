@@ -307,6 +307,67 @@ def check_live_trade_lab():
     return ok, f"{len(candles.get('x', []))} bars of {bars_day}, window {window_day}, entry {entry}"
 
 
+# --- Phase 5 ---------------------------------------------------------------------------------
+
+
+def check_db_upgrade():
+    """A copy of data/gatekeeper.db gets the new columns, keeps its rows; a second run adds nothing."""
+    import shutil
+
+    from sqlalchemy import text
+    from sqlmodel import SQLModel
+
+    from gatekeeper.db import add_missing_columns, make_engine
+
+    real = ROOT / "data" / "gatekeeper.db"
+    if not real.exists():
+        return True, "no data/gatekeeper.db yet (a new database gets every column)"
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = Path(tmp) / "copy.db"
+        shutil.copyfile(real, copy)
+        eng = make_engine(f"sqlite:///{copy.as_posix()}")
+        with eng.connect() as c:
+            before = c.execute(text("SELECT count(*) FROM skillrun")).scalar()
+        SQLModel.metadata.create_all(eng)
+        added = add_missing_columns(eng)
+        again = add_missing_columns(eng)
+        with eng.connect() as c:
+            after = c.execute(text("SELECT count(*) FROM skillrun")).scalar()
+        eng.dispose()
+    ok = before == after and not again
+    return ok, f"added {len(added)} column(s) {added or ''}; {after} skill runs kept; idempotent"
+
+
+def check_live_day_panel():
+    """The Home page's day-level Go / No-Go, live (a throwaway database)."""
+    import os
+
+    from streamlit.testing.v1 import AppTest
+
+    from gatekeeper.db import get_engine
+    from gatekeeper.settings import get_settings
+
+    with tempfile.TemporaryDirectory() as tmp:
+        old = {k: os.environ.get(k) for k in ("GATEKEEPER_MODE", "DB_URL")}
+        os.environ.update(GATEKEEPER_MODE="live", DB_URL=f"sqlite:///{(Path(tmp) / 'd.db').as_posix()}")
+        get_settings.cache_clear()
+        get_engine.cache_clear()
+        try:
+            at = AppTest.from_file(str(ROOT / "app" / "Home.py"), default_timeout=120).run()
+            panel = next((m.value for m in at.markdown if m.value.startswith("#### Today")), "")
+            first = next((m.value for m in at.markdown if "**Market open**" in m.value), "")
+        finally:
+            get_engine().dispose()
+            for k, v in old.items():
+                os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+            get_settings.cache_clear()
+            get_engine.cache_clear()
+    if at.exception:
+        return False, str(at.exception[0].value)
+    verdict = panel.split("[")[-1].rstrip("]") if panel else "no panel"
+    return bool(panel), f"Today: {verdict} · {first.split('·', 1)[-1].strip()}"
+
+
 PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
     # (name, check, needs internet)
     0: [
@@ -345,6 +406,17 @@ PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
         ("charts and Trade Lab logic", pytest("tests/test_charts.py", "tests/test_lab.py"), False),
         ("Trade Lab page in replay (golden numbers)", pytest("tests/test_ui_trade_lab.py"), False),
         ("live: Trade Lab chart and entry status", check_live_trade_lab, True),
+    ],
+    5: [
+        ("every gate's boundaries, overall rule, store", pytest("tests/test_readiness.py"), False),
+        ("the four replay scenarios", pytest("tests/test_go_no_go_replay.py"), False),
+        (
+            "panels, decision log, no buy/sell advice",
+            pytest("tests/test_ui_trade_lab.py", "tests/test_wording.py"),
+            False,
+        ),
+        ("your database upgrades in place (a copy)", check_db_upgrade, False),
+        ("live: Home day-level Go / No-Go", check_live_day_panel, True),
     ],
 }
 

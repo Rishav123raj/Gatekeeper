@@ -35,9 +35,7 @@ def portfolio(runner: SkillRunner | None = None) -> Portfolio | None:
     return Portfolio.model_validate(doc) if isinstance(doc, dict) else None
 
 
-def log(
-    *, all_days: bool = False, runner: SkillRunner | None = None
-) -> tuple[list[BrokerRecord], RunResult]:
+def log(*, all_days: bool = False, runner: SkillRunner | None = None) -> tuple[list[BrokerRecord], RunResult]:
     """Today's decisions (status `empty` when there are none)."""
     runner = runner_or_default(runner)
     args = ["log"]
@@ -50,8 +48,11 @@ def log(
 def approve(index: int, reply: str, *, runner: SkillRunner | None = None) -> RunResult:
     """Records the user's reply word for word. Status `blocked` ("Not recorded") unless it is a real yes."""
     return runner_or_default(runner).run(
-        "broker", ["approve", "--index", str(index), "--reply", reply],
-        json_out=False, writes_state=True, timeout=60,
+        "broker",
+        ["approve", "--index", str(index), "--reply", reply],
+        json_out=False,
+        writes_state=True,
+        timeout=60,
     )
 
 

@@ -66,9 +66,27 @@ def run_plan(
     `out` saves the full result (with sample paths) to that path under the working folder.
     """
     runner = runner_or_default(runner)
-    args = ["run", "--symbol", symbol.upper(), "--date", date, "--entry", str(entry), "--stop", str(stop),
-            "--target", str(target), "--entry-time", entry_time, "--setup", setup, "--stop-rule", stop_rule,
-            "--plan", "nonexistent-plan.json"]
+    args = [
+        "run",
+        "--symbol",
+        symbol.upper(),
+        "--date",
+        date,
+        "--entry",
+        str(entry),
+        "--stop",
+        str(stop),
+        "--target",
+        str(target),
+        "--entry-time",
+        entry_time,
+        "--setup",
+        setup,
+        "--stop-rule",
+        stop_rule,
+        "--plan",
+        "nonexistent-plan.json",
+    ]
     _sim_args(args, until, replays, seed, window)
     opt(args, "--write", out)
     res = runner.run("timemachine", args, writes_state=out is not None, timeout=TM_TIMEOUT)

@@ -96,6 +96,54 @@ def test_compare_leaves_plan_json_alone(lab):
     assert (df.iloc[1]["Target"], df.iloc[2]["Stop"]) == (375.9, 354.47)
 
 
+def test_go_no_go_before_sizing_is_no_trade(lab):
+    assert any(m.value == "#### Trade: TSLA: :red-badge[NO TRADE]" for m in lab.markdown)
+    assert any("⛔ **Risk check** · not checked yet: run Size & check" in m.value for m in lab.markdown)
+
+
+def test_size_and_check_then_caution(lab):
+    lab.button(key="lab_size").click().run()
+    assert not lab.exception and not lab.error
+    text = markdown(lab)
+    assert "**8 shares** · $2,913.44 · $46.88 at the stop · bound by **max loss**" in text
+    assert any(s.value.startswith("check.py PASS") for s in lab.success)
+    assert "#### Trade: TSLA: :orange-badge[CAUTION]" in text
+    assert (
+        "⚠️ **Time Machine verdict** · Close to a coin flip: target first 29.4 % vs stop first 25.5 %" in text
+    )
+    assert "⚠️ **Earnings outside the trade**" in text
+    assert "✅ **Risk check** · PASS: max loss $46.88, reward:risk 1.0" in text
+    (code,) = [c.value for c in lab.code]
+    assert code.startswith("/trader-broker\nOrder 1 in trader/orders.json passed trader-risk")
+
+
+def test_decision_is_logged(lab):
+    from gatekeeper import store
+    from gatekeeper.db import get_engine, session
+
+    next(w for w in lab.text_input if w.label == "Note").input("coin flip; skipping")
+    next(b for b in lab.button if b.label == "Log: Skipped").click().run()
+    assert any(s.value == "Logged SKIPPED for TSLA (Go / No-Go was CAUTION)." for s in lab.success)
+    with session(get_engine()) as s:
+        d = store.decisions(s, "replay")[0]
+    assert (d.action, d.symbol, d.overall, d.reason_note, d.followed_rules) == (
+        "SKIPPED",
+        "TSLA",
+        "CAUTION",
+        "coin flip; skipping",
+        True,
+    )
+    assert d.plan_id is not None and d.readiness_id is not None
+
+
+def test_home_day_panel(replay_env):
+    home = AppTest.from_file(str(ROOT / "app" / "Home.py"), default_timeout=120).run()
+    text = markdown(home)
+    assert "#### Today: :orange-badge[CAUTION]" in text
+    assert "⛔ **Awake window (IST)** · flat-by 15:55 NY is 01:25 IST" in text
+    assert "✅ **Breadth** · 18 % of usable charts broke their opening range" in text
+
+
 def test_external_plan_change_shows_a_banner(lab):
     path = plan_file()
     doc = json.loads(path.read_text(encoding="utf-8"))

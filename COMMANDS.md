@@ -88,6 +88,35 @@ In LIVE the tiles come straight from Yahoo (cached a minute), and everything els
 comes from the worker: start it in a second window (`scripts\dev.ps1` starts both).
 The sidebar's worker dot is green when a job ran in the last 3 minutes.
 
+### Go / No-Go (Phase 5)
+
+Two panels answer two questions, each check with its reason (hover a line for its source):
+
+- **Home → Today**: *should I be trading at all right now?* Market open, entry window, your
+  awake hours in IST (is the flat-by time inside them?), daily loss budget, trades left, PDT,
+  market context, breadth, recent form.
+- **Trade Lab → 5 · Size, check and Go / No-Go**: *is this trade worth taking?* **Size & check**
+  runs size.py (one bracket order) and check.py (PASS / BLOCK), then: entry triggered (and not
+  stale), news clean, earnings outside the trade, plan valid, reward:risk at the fresh price,
+  the Time Machine's verdict, history agrees, risk check, size sane.
+
+The rule: any **hard** check failing → **NO TRADE**; otherwise any warning, or a **soft** check
+failing → **CAUTION**; otherwise → **GO**. GO means your rules allow it and the honest odds aren't
+against it; it is not a recommendation. Then **Log: Taken / Log: Skipped** (with a note and
+"I followed my rules") records the decision with the result it had. When the risk check passes,
+the panel shows a **ticket for Claude**: paste it into Claude chat, where /trader-broker asks for
+your yes and Claude's Allow once card asks again. Gatekeeper itself never places an order.
+
+Thresholds are in `.env` (see `.env.example`, `GATE_*`), for example:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `AWAKE_IST` | `18:30-23:30` | Your awake hours in IST; the flat-by time should fall inside them |
+| `GATE_BREADTH_WARN_PCT` | `10` | Warn when fewer charts than this % broke out |
+| `GATE_TM_NEITHER_WARN_PCT` | `40` | Warn when more replays than this % hit neither side |
+| `GATE_ENTRY_STALE_BARS` | `1` | Warn when the trigger is more than this many bars old |
+| `GATE_EARNINGS_WARN_SESSIONS` | `3` | Warn when the next report is this close |
+
 ### The background worker (Phase 2)
 
 The worker runs the skills on a New York schedule and saves the results in
@@ -180,7 +209,9 @@ One command checks everything a phase delivered and prints a PASS / FAIL line pe
 
 | What | Command |
 | --- | --- |
-| **Validate Phase 4** (offline) | `uv run python scripts/validate.py --phase 4` |
+| **Validate Phase 5** (offline) | `uv run python scripts/validate.py --phase 5` |
+| Validate Phase 5, including the live day panel | `uv run python scripts/validate.py --phase 5 --live` |
+| Validate Phase 4 (offline) | `uv run python scripts/validate.py --phase 4` |
 | Validate Phase 4, including the live Trade Lab check | `uv run python scripts/validate.py --phase 4 --live` |
 | Validate Phase 3 (offline) | `uv run python scripts/validate.py --phase 3` |
 | Validate Phase 3, including the live Home check | `uv run python scripts/validate.py --phase 3 --live` |
@@ -206,6 +237,16 @@ Phase 1's checks:
 It exits 0 when every check passed. During a US session (from 19:15 IST on
 weekdays, 20:15 IST from Nov 2), `--live` shows SPY's real status, for example
 `waiting` or `triggered`. On weekends and at night it shows `closed` / `no-data`.
+
+Phase 5's checks:
+
+| Check | What it proves |
+| --- | --- |
+| every gate's boundaries, overall rule, store | All 18 checks at their PASS / WARN / FAIL edges (window minutes, loss %, trades left, PDT, VIX, breadth, form, trigger age, 8-K items, earnings sessions, risk %, reward:risk, verdicts, history), the GO / CAUTION / NO TRADE rule, repeat-skipping storage, the decision log, and that an older database gets the new columns |
+| the four replay scenarios | TSLA 10:15, 8 shares → CAUTION (coin flip; earnings in the news); 9 shares → NO TRADE ($52.74 > $50); 09:40 → NO TRADE (window); 366.48 quote at 10:55 → NO TRADE (reward:risk 0.44, $65.28) |
+| panels, decision log, no buy/sell advice | The Trade Lab: NO TRADE before sizing, CAUTION after Size & check, the ticket for Claude, "Log: Skipped" stored with plan, result, note and the rules flag; the Home day panel; no "buy" / "sell" wording as advice anywhere in the app |
+| your database upgrades in place | A copy of `data\gatekeeper.db` gets the new columns and keeps every row |
+| live: Home day-level Go / No-Go (`--live`) | The day panel live (on a weekend: NO TRADE, closed) |
 
 Phase 4's checks:
 

@@ -7,7 +7,7 @@ Every function takes an open session and a mode ("live" or "replay"); the caller
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import delete, literal_column
@@ -19,6 +19,7 @@ from gatekeeper.skills import models as m
 from gatekeeper.tables import (
     MODE_TABLES,
     AlertFired,
+    Decision,
     EarningsSnapshot,
     EntrySignal,
     JobHeartbeat,
@@ -27,6 +28,7 @@ from gatekeeper.tables import (
     PinnedTicker,
     Plan,
     PriceMove,
+    Readiness,
     RegimeSnapshot,
     RiskVerdict,
     ScanHit,
@@ -549,3 +551,77 @@ def set_next_report_date(s: Session, symbol: str, mode: str, day: str | None) ->
     row.next_report_date = day
     s.add(row)
     return row
+
+
+# --- Go / No-Go (Phase 5) --------------------------------------------------------------------
+
+
+def latest_plan(s: Session, mode: str, symbol: str, day: str) -> Plan | None:
+    q = select(Plan).where(Plan.mode == mode, Plan.symbol == symbol, Plan.date == day)
+    return s.exec(q.order_by(col(Plan.id).desc())).first()
+
+
+def latest_tm(s: Session, mode: str, plan_id: int) -> TmResult | None:
+    q = select(TmResult).where(TmResult.mode == mode, TmResult.plan_id == plan_id)
+    return s.exec(q.order_by(col(TmResult.id).desc())).first()
+
+
+def save_readiness(s: Session, result: Any, mode: str, *, min_minutes: int = 5) -> Readiness:
+    """Stores an evaluation; an unchanged one (same result, same reasons) at most every `min_minutes`."""
+    gates = [g.to_dict() for g in result.gates]
+    q = select(Readiness).where(
+        Readiness.mode == mode,
+        Readiness.scope == result.scope,
+        Readiness.symbol == result.symbol,
+        Readiness.plan_id == result.plan_id,
+    )
+    last = s.exec(q.order_by(col(Readiness.id).desc())).first()
+    if last is not None and last.overall == result.overall and last.gates == gates:
+        age = utcnow() - (last.ts if last.ts.tzinfo else last.ts.replace(tzinfo=UTC))
+        if age < timedelta(minutes=min_minutes):
+            return last
+    row = Readiness(
+        mode=mode,
+        scope=result.scope,
+        plan_id=result.plan_id,
+        symbol=result.symbol,
+        overall=result.overall,
+        gates=gates,
+    )
+    s.add(row)
+    s.flush()
+    return row
+
+
+def save_decision(
+    s: Session,
+    mode: str,
+    action: str,
+    *,
+    plan_id: int | None,
+    symbol: str | None,
+    note: str = "",
+    followed_rules: bool = True,
+    readiness_id: int | None = None,
+    overall: str | None = None,
+) -> Decision:
+    if action not in ("TAKEN", "SKIPPED"):
+        raise ValueError("action must be TAKEN or SKIPPED")
+    row = Decision(
+        mode=mode,
+        plan_id=plan_id,
+        symbol=symbol,
+        action=action,
+        reason_note=note,
+        followed_rules=followed_rules,
+        readiness_id=readiness_id,
+        overall=overall,
+    )
+    s.add(row)
+    s.flush()
+    return row
+
+
+def decisions(s: Session, mode: str, limit: int = 50) -> list[Decision]:
+    q = select(Decision).where(Decision.mode == mode).order_by(col(Decision.id).desc()).limit(limit)
+    return list(s.exec(q))

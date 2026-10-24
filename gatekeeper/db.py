@@ -51,7 +51,31 @@ def make_engine(url: str) -> Engine:
 
 def init_db(engine: Engine) -> Engine:
     SQLModel.metadata.create_all(engine)
+    add_missing_columns(engine)
     return engine
+
+
+def add_missing_columns(engine: Engine) -> list[str]:
+    """Adds columns that newer table definitions have and an existing database lacks.
+
+    `create_all` only creates missing tables, so a database made by an earlier phase would
+    otherwise miss new (nullable or defaulted) columns. Returns what it added, "table.column".
+    """
+    added = []
+    with engine.begin() as conn:
+        for table in SQLModel.metadata.sorted_tables:
+            have = {row[1] for row in conn.exec_driver_sql(f'PRAGMA table_info("{table.name}")')}
+            for col in table.columns:
+                if col.name in have:
+                    continue
+                ddl = col.type.compile(dialect=engine.dialect)
+                default = ""
+                if col.default is not None and getattr(col.default, "is_scalar", False):
+                    v = col.default.arg
+                    default = f" DEFAULT {int(v) if isinstance(v, bool) else repr(v)}"
+                conn.exec_driver_sql(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {ddl}{default}')
+                added.append(f"{table.name}.{col.name}")
+    return added
 
 
 @lru_cache

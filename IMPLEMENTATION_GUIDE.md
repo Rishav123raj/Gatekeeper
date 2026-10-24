@@ -43,7 +43,7 @@ Claude will then:
 | 2 | Storage & background worker | M2 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40074262315 green on Windows + Ubuntu |
 | 3 | Market Overview, Scanner, News | M3 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40108052325 green on Windows + Ubuntu (after the Windows pin-order fix, Issue 6) |
 | 4 | Trade Lab | M4 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40115151903 green on Windows + Ubuntu |
-| 5 | Go / No-Go engine | M5 | ⬜ | | | |
+| 5 | Go / No-Go engine | M5 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
 | 6 | Risk, Size, Positions, Alerts | M6 | ⬜ | | | |
 | 7 | Journal & Research | M7 | ⬜ | | | |
 | P | Paper-trading period (4 to 8 weeks) | — | ⬜ | | | Usage, not code |
@@ -354,30 +354,37 @@ uv run python scripts/validate.py --phase 4 --live   # every Phase 4 check, PASS
 **Goal:** turn everything into GO / CAUTION / NO TRADE with reasons, for the day and for the trade.
 
 ### Tasks
-- [ ] **5.1 `gatekeeper/readiness.py`**:
+- [x] **5.1 `gatekeeper/readiness.py`**:
   - `Gate(name, level: Literal["hard","soft"], status: Literal["PASS","WARN","FAIL"], reason: str, source: str)`
   - `evaluate_day(ctx) -> Readiness` and `evaluate_trade(ctx, plan_id) -> Readiness`
   - overall: any hard FAIL → **NO_TRADE**; otherwise any WARN or soft FAIL → **CAUTION**; otherwise **GO**.
-- [ ] **5.2 Day gates** (plan 9.1): market open, entry window, awake window in IST, daily loss budget, trades left, PDT, market context, breadth, recent form.
-- [ ] **5.3 Trade gates** (plan 9.2): entry triggered (plus staleness more than one bar old), news clean (`!` items 2.02, 4.02, 1.03, 3.01, 1.05 and the halt tag → FAIL), earnings outside the trade, plan valid, reward:risk at the fresh price, Time Machine verdict (parse the verdict text into `strong_target | lean_target | coin_flip | break_even | lean_stop | strong_stop`), history agrees, risk check, size sane.
-- [ ] **5.4 Thresholds** move into `Settings` (`gate_*` fields) with the plan's defaults; nothing is hard-coded in the gate functions.
-- [ ] **5.5 Context builder**: `build_context(plan_id=None)` gathers the latest rows plus a fresh `alerts.clock()`; one function so the gates stay pure and testable.
-- [ ] **5.6 `app/components/gates.py`**: the panel from plan 9.3 (icons, reasons, source tooltips), with buttons **Log: Taken** and **Log: Skipped** (a note field and a "followed my rules" checkbox) → a `Decision` row, plus **Copy ticket for Claude** (copies `/trader-broker` text).
-- [ ] **5.7** Wire the panels into Home (day) and Trade Lab (trade); store every evaluation as a `Readiness` row.
-- [ ] **5.8** For the trade flow in Trade Lab, add **Size & check**: `budget.size(write=True)` then `risk.check()` before evaluating the trade gates.
+- [x] **5.2 Day gates** (plan 9.1): market open, entry window, awake window in IST, daily loss budget, trades left, PDT, market context, breadth, recent form.
+- [x] **5.3 Trade gates** (plan 9.2): entry triggered (plus staleness more than one bar old), news clean (`!` items 2.02, 4.02, 1.03, 3.01, 1.05 and the halt tag → FAIL), earnings outside the trade, plan valid, reward:risk at the fresh price, Time Machine verdict (parse the verdict text into `strong_target | lean_target | coin_flip | break_even | lean_stop | strong_stop`), history agrees, risk check, size sane.
+- [x] **5.4 Thresholds** move into `Settings` (`gate_*` fields) with the plan's defaults; nothing is hard-coded in the gate functions.
+- [x] **5.5 Context builder**: `build_context(plan_id=None)` gathers the latest rows plus a fresh `alerts.clock()`; one function so the gates stay pure and testable.
+- [x] **5.6 `app/components/gates.py`**: the panel from plan 9.3 (icons, reasons, source tooltips), with buttons **Log: Taken** and **Log: Skipped** (a note field and a "followed my rules" checkbox) → a `Decision` row, plus **Copy ticket for Claude** (copies `/trader-broker` text).
+- [x] **5.7** Wire the panels into Home (day) and Trade Lab (trade); store every evaluation as a `Readiness` row.
+- [x] **5.8** For the trade flow in Trade Lab, add **Size & check**: `budget.size(write=True)` then `risk.check()` before evaluating the trade gates.
 
 ### Tests
-- [ ] **5.9** `tests/test_readiness.py`: table-driven PASS/WARN/FAIL boundaries for every gate; overall-result logic.
-- [ ] **5.10** Replay scenarios:
+- [x] **5.9** `tests/test_readiness.py`: table-driven PASS/WARN/FAIL boundaries for every gate; overall-result logic.
+- [x] **5.10** Replay scenarios:
   - TSLA 10:15, 8 shares → **CAUTION** (coin flip; earnings this week)
   - 9 shares → **NO_TRADE** (risk BLOCK $52.74)
   - 09:40 → **NO_TRADE** (window)
   - quote 366.48 at 10:55 → **NO_TRADE** (reward:risk 0.44; loss $65.28)
 
+### Verify
+```powershell
+uv run pytest tests/test_readiness.py tests/test_go_no_go_replay.py tests/test_ui_trade_lab.py tests/test_wording.py -v
+uv run streamlit run app/Home.py      # REPLAY 10:15: Home → Today panel; Trade Lab → … → Size & check → panel → Log
+uv run python scripts/validate.py --phase 5 --live   # every Phase 5 check, PASS / FAIL
+```
+
 ### Exit criteria
-- [ ] All four replay scenarios give the expected result and reasons
-- [ ] Decisions are logged with plan, result, note and rules-followed flag
-- [ ] No wording anywhere says "buy" or "sell" as advice
+- [x] All four replay scenarios give the expected result and reasons (CAUTION: coin flip + earnings in the news; NO TRADE: $52.74; NO TRADE: window; NO TRADE: reward:risk 0.44 and $65.28; `tests/test_go_no_go_replay.py`)
+- [x] Decisions are logged with plan, result, note and rules-followed flag (plus the symbol and a link to the evaluation; `test_decision_is_logged`)
+- [x] No wording anywhere says "buy" or "sell" as advice (enforced by `tests/test_wording.py`; the only "BUY" shown is the skill's own order ticket text)
 
 ---
 
@@ -574,6 +581,15 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-24 | 4 | Not triggered yet: "Plan ahead at entry price" passes `--entry` to exit.py, as the skill allows | exit.py refuses to plan a waiting entry without a price |
 | 2026-10-24 | 4 | The chart's time window, trigger marker and flat-by line use the date of the bars, not the calendar day | Found in the live check: on a weekend the window was Saturday while the bars were Friday's, so no candles showed |
 | 2026-10-24 | 4 | New `gatekeeper/lab.py` (preview, skill arguments, compare, plan-file hash) and `Page.runner()` / `Page.yahoo()`; the replay-mode UI fixture moved to `tests/conftest.py` (shared by the UI test modules, `tests/` is now a package) | Keeps the page thin and the logic testable |
+| 2026-10-24 | 5 | The trade-level evaluation has the 9 trade gates only (the day gates have their own panel on Home); the entry window still reaches the trade through check.py's window BLOCK, which is how the 09:40 scenario comes out NO TRADE | Matches the plan's two panels; one source of truth for the window |
+| 2026-10-24 | 5 | Missing inputs fail their hard gate with an instruction ("run the Time Machine on this plan first", "not checked yet: run Size & check"), and a Time Machine run for a different plan fails too | A trade has to earn its way in: nothing passes by default |
+| 2026-10-24 | 5 | Earnings gate: a report date set by hand that is today → FAIL; within `GATE_EARNINGS_WARN_SESSIONS` (3) → WARN; no date but earnings in the news → WARN (this is the replay's "earnings this week") | SEC data has no report dates; the news is the only automatic signal |
+| 2026-10-24 | 5 | Reward:risk is measured from the higher of the plan's entry and a price in `trader/prices.json` under 15 minutes old (the skills' own rule); exactly at the minimum is a WARN (within 10 %) | The documented 1R plan has reward:risk 1.00 with a minimum of 1 |
+| 2026-10-24 | 5 | Evaluations are stored on every change, and an unchanged one at most every `GATE_READINESS_STORE_MIN` (5) minutes | Home refreshes every 30 s; storing each identical repeat would flood the table |
+| 2026-10-24 | 5 | `Decision` gained `symbol`, `readiness_id` and `overall` (the result when you decided); `Readiness` gained `symbol`. `init_db` now adds missing columns to an existing database (`add_missing_columns`), tested on a copy of the real `data/gatekeeper.db` | `create_all` never alters existing tables |
+| 2026-10-24 | 5 | Size & check only runs check.py when size.py wrote an order | Otherwise check.py would check an older order left in trader/orders.json |
+| 2026-10-24 | 5 | "Copy ticket for Claude" is a code block (Streamlit's copy icon) with `/trader-broker`, the order's index, its risk fingerprint and the ticket text | Gatekeeper never places orders; Claude's own gates (your typed yes, Allow once) stay in charge |
+| 2026-10-24 | 5 | A test (`tests/test_wording.py`) fails on any "buy" / "sell" in the app or the engine outside a "not a buy list" style disclaimer | Exit criterion 3, kept true from now on |
 
 ---
 
@@ -608,3 +624,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 3 | CI run 40108052325 green on windows-latest and ubuntu-latest (lint, 315 upstream tests, 195 Gatekeeper tests with the 600 s timeout). Merged `phase-3-screens` into `main` | CI green | Push `main`; Issue 4 (a weekday live session, worker + dashboard) when convenient; then Phase 4 |
 | 2026-10-24 | 4 | Trade Lab charts (candles with levels, odds bar, fan, histogram), `gatekeeper/lab.py` (preview, compare, plan-file hash), the Trade Lab page (symbol picker, live chart, entry, exit with preview, Time Machine, compare, external-plan banner, Go / No-Go placeholder); fixed the chart window to use the bars' date (found live); Phase 4 checks in `validate.py`; COMMANDS.md Trade Lab notes | 216 pytest pass (charts 5, lab 9, Trade Lab page 7); ruff clean; validate.py --phase 4 --live 3/3 PASS | Push `phase-4-trade-lab` so CI runs, then Phase 5 |
 | 2026-10-24 | 4 | CI run 40115151903 green on windows-latest (1 min 42 s) and ubuntu-latest (52 s); both jobs concluded success (the API didn't list per-step results for this run). Merged `phase-4-trade-lab` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 5 |
+| 2026-10-24 | 5 | Go / No-Go engine (`gatekeeper/readiness.py`: 9 day + 9 trade gates, pure, thresholds in `GATE_*` settings, context builders), store (readiness with repeat-skipping, decisions), DB column upgrades for older databases, the panel / ticket / decision form (`app/components/gates.py`), Home day panel, Trade Lab Size & check + trade panel; Phase 5 checks in `validate.py`; COMMANDS.md Go / No-Go section; `.env.example` thresholds | 307 pytest pass (readiness 80, scenarios 5, Trade Lab UI 11, wording 2); ruff clean; validate.py --phase 5 --live 5/5 PASS (all four scenarios; DB upgrade on a copy of the real database) | Push `phase-5-go-no-go` so CI runs, then Phase 6 |

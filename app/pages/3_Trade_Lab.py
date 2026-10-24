@@ -12,12 +12,14 @@ import pandas as pd
 import streamlit as st
 
 from app.components import charts
+from app.components.gates import claude_ticket, decision_form, readiness_panel
 from app.components.page import Page, footer, setup_page
 from app.components.tables import pct, price
 from gatekeeper import lab, store
 from gatekeeper.clock import NY, load_session_times
 from gatekeeper.db import session
-from gatekeeper.skills import entry, exit, timemachine
+from gatekeeper.readiness import build_trade_context, evaluate_trade
+from gatekeeper.skills import broker, budget, entry, exit, risk, timemachine
 from gatekeeper.skills.models import EntryStatus, ExitPlan, TimeMachineResult
 
 page = setup_page("Trade Lab", "🧪")
@@ -78,7 +80,7 @@ def external_plan_banner(p: Page) -> None:
             with session(p.engine) as s:
                 row = store.save_plan(s, plan, p.mode)
             st.session_state["symbol"] = plan.symbol
-            lab_state(p, plan.symbol).update(plan=plan, plan_id=row.id, tm=None)
+            lab_state(p, plan.symbol).update(plan=plan, plan_id=row.id, tm=None, size=None, risk=None)
         st.session_state[key] = h
         st.rerun()
     if c2.button("Dismiss", key="lab_dismiss"):
@@ -265,7 +267,7 @@ def exit_panel(p: Page, symbol: str, ls: dict) -> None:
         else:
             with session(p.engine) as s:
                 row = store.save_plan(s, plan, p.mode)
-            ls.update(plan=plan, plan_id=row.id, plan_error=None, tm=None)
+            ls.update(plan=plan, plan_id=row.id, plan_error=None, tm=None, size=None, risk=None)
             st.session_state[f"plan_hash:{p.mode}"] = lab.file_hash(p.trader_dir / "plan.json")
     if ls.get("plan_error"):
         st.error(ls["plan_error"])
@@ -433,6 +435,80 @@ def compare_panel(p: Page, ls: dict, until: str | None) -> None:
         )
 
 
+def size_and_check(p: Page, ls: dict) -> None:
+    """size.py writes one bracket order; check.py PASSes or BLOCKs it (task 5.8). Nothing is placed."""
+    r = p.runner("trade_lab")
+    size, res = budget.size(write=True, runner=r)
+    ls.update(size=size, size_error=None if size else (res.message or res.status), risk=None, risk_error=None)
+    if size is None or size.refused:
+        return  # no order was written: checking trader/orders.json now would check an older order
+    report, res = risk.check(runner=r)
+    ls.update(risk=report, risk_error=None if report else (res.message or res.status))
+    if report is not None:
+        with session(p.engine) as s:
+            store.save_risk(s, report, p.mode, ls.get("plan_id"))
+
+
+def go_no_go(p: Page, symbol: str, ls: dict) -> None:
+    st.subheader("5 · Size, check and Go / No-Go")
+    plan = ls.get("plan")
+    c1, c2 = st.columns([1, 3])
+    if c1.button(
+        "Size & check",
+        key="lab_size",
+        disabled=busy() or plan is None,
+        help="size.py sizes the plan to your max loss and writes one bracket order; check.py then "
+        "checks it against every limit. Nothing is placed.",
+    ):
+        with st.spinner("Sizing and checking..."):
+            size_and_check(p, ls)
+    size, report = ls.get("size"), ls.get("risk")
+    if plan is None:
+        c2.caption("Plan the exit first.")
+    elif size is not None:
+        z = size.sizing
+        if size.refused:
+            c2.error(z.refusal or "size.py wrote no order")
+        else:
+            c2.markdown(
+                f"**{z.qty} shares** · ${z.cost:,.2f} · ${z.max_loss:,.2f} at the stop · bound by "
+                f"**{z.bound_by}** · one bracket order (stop {z.stop}, target {z.target}) in "
+                "trader/orders.json"
+            )
+        if report is not None:
+            for v in report.results:
+                (c2.success if v.verdict == "PASS" else c2.error)(
+                    f"check.py {v.verdict}: " + ("; ".join(v.reasons) if v.reasons else "; ".join(v.info[:2]))
+                )
+    for err in (ls.get("size_error"), ls.get("risk_error")):
+        if err:
+            st.error(err)
+
+    ctx = build_trade_context(
+        p.engine,
+        p.mode,
+        p.now,
+        p.trader_dir,
+        p.settings,
+        symbol,
+        entry=ls.get("entry"),
+        plan=plan,
+        plan_id=ls.get("plan_id"),
+        plan_error=ls.get("plan_error"),
+        tm=ls.get("tm"),
+        size=size,
+        risk=report,
+    )
+    result = evaluate_trade(ctx, p.settings)
+    with session(p.engine) as s:
+        rid = store.save_readiness(s, result, p.mode, min_minutes=p.settings.gate_readiness_store_min).id
+    readiness_panel(result, f"Trade: {symbol}")
+    if report is not None and not report.block:
+        tickets, _ = broker.show(runner=p.runner("trade_lab"))
+        claude_ticket(tickets)
+    decision_form(p.engine, p.mode, result, rid, key=f"decide_{symbol}")
+
+
 symbol = pick_symbol(page)
 external_plan_banner(page)
 ls = lab_state(page, symbol)
@@ -445,10 +521,5 @@ with right:
     exit_panel(page, symbol, ls)
 until = tm_panel(page, ls)
 compare_panel(page, ls, until)
-st.subheader("5 · Go / No-Go")
-st.info(
-    "The trade-level Go / No-Go panel arrives in Phase 5: entry, news, earnings, plan, the Time Machine's "
-    "verdict, the risk check and size, each with its reason.",
-    icon="ℹ️",
-)
+go_no_go(page, symbol, ls)
 footer()

@@ -209,12 +209,24 @@ class SkillRunner:
             else:
                 proc = self._exec(cmd, env, timeout, timing)
         except subprocess.TimeoutExpired as e:
-            res = RunResult(tool, sent, "error", None, stdout=_text(e.stdout), stderr=_text(e.stderr),
-                            message=f"timed out after {timeout:g} s")
+            res = RunResult(
+                tool,
+                sent,
+                "error",
+                None,
+                stdout=_text(e.stdout),
+                stderr=_text(e.stderr),
+                message=f"timed out after {timeout:g} s",
+            )
         except Timeout:
             timing["t0"] = time.perf_counter()
-            res = RunResult(tool, sent, "error", None,
-                            message=f"another run held the trader/ lock for over {self.lock_timeout:g} s")
+            res = RunResult(
+                tool,
+                sent,
+                "error",
+                None,
+                message=f"another run held the trader/ lock for over {self.lock_timeout:g} s",
+            )
         else:
             data = parse_json(proc.stdout) if json_out else None
             status = classify(tool, sub, proc.returncode, data, json_out, proc.stderr)
@@ -233,8 +245,17 @@ class SkillRunner:
     ) -> subprocess.CompletedProcess[str]:
         self.cwd.mkdir(parents=True, exist_ok=True)
         timing["started"], timing["t0"] = datetime.now(UTC), time.perf_counter()
-        return subprocess.run(cmd, cwd=self.cwd, env=env, capture_output=True, text=True,
-                              encoding="utf-8", errors="replace", timeout=timeout, stdin=subprocess.DEVNULL)
+        return subprocess.run(
+            cmd,
+            cwd=self.cwd,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            stdin=subprocess.DEVNULL,
+        )
 
 
 def _text(b: bytes | str | None) -> str:

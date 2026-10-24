@@ -107,5 +107,6 @@ def add_rule(
 
 
 def reset(rule_id: str, *, runner: SkillRunner | None = None) -> RunResult:
-    return runner_or_default(runner).run("alerts", ["reset", rule_id], json_out=False, writes_state=True,
-                                         timeout=30)
+    return runner_or_default(runner).run(
+        "alerts", ["reset", rule_id], json_out=False, writes_state=True, timeout=30
+    )

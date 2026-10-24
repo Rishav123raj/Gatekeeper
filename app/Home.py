@@ -8,10 +8,12 @@ import pandas as pd
 import streamlit as st
 
 from app.components import charts
+from app.components.gates import readiness_panel
 from app.components.page import Page, footer, setup_page
 from app.components.tables import news_line, pct, price
 from gatekeeper import regime, store, yahoo
 from gatekeeper.db import session
+from gatekeeper.readiness import build_day_context, evaluate_day
 from gatekeeper.skills._base import read_json
 from gatekeeper.skills.models import BrokerRecord
 
@@ -44,9 +46,7 @@ def market_context(p: Page) -> None:
         snap = row.payload if row else None
 
     st.subheader("Market context")
-    st.info(
-        "Day-level Go / No-Go arrives in Phase 5. The context below is information, not a signal.", icon="ℹ️"
-    )
+    st.caption("Information, not a signal: the tape a long breakout is trying to work in.")
     if snap is None:
         st.caption("No market context yet: the worker records it every 5 minutes during the session.")
     else:
@@ -180,7 +180,17 @@ def worker_health(p: Page) -> None:
         )
 
 
+def day_readiness(p: Page) -> None:
+    """The day-level Go / No-Go: should I be trading at all right now?"""
+    ctx = build_day_context(p.engine, p.mode, p.now, p.trader_dir, p.settings)
+    result = evaluate_day(ctx, p.settings)
+    with session(p.engine) as s:
+        store.save_readiness(s, result, p.mode, min_minutes=p.settings.gate_readiness_store_min)
+    readiness_panel(result, "Today")
+
+
 def live_parts() -> None:
+    day_readiness(page)
     market_context(page)
     budget(page)
     what_changed(page)

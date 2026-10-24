@@ -59,7 +59,7 @@ class ReplayContext:
 
     def offline_path(self, source: str) -> Path:
         if source.startswith(CHARTS):
-            return self.workspace / "charts" / source[len(CHARTS):].lstrip("/")
+            return self.workspace / "charts" / source[len(CHARTS) :].lstrip("/")
         return self.fixtures / source
 
     def inject(self, tool: str, sub: str | None, args: list[str]) -> list[str]:

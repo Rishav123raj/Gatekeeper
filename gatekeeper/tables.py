@@ -252,6 +252,7 @@ class Readiness(SQLModel, table=True):
     ts: datetime = Field(default_factory=utcnow, index=True)
     scope: str  # day | trade
     plan_id: int | None = Field(default=None, foreign_key="plan.id")
+    symbol: str | None = None
     overall: str  # GO | CAUTION | NO_TRADE
     gates: list[dict[str, Any]] | None = _json()
 
@@ -266,6 +267,9 @@ class Decision(SQLModel, table=True):
     action: str  # TAKEN | SKIPPED
     reason_note: str = ""
     followed_rules: bool = True
+    symbol: str | None = None
+    readiness_id: int | None = Field(default=None, foreign_key="readiness.id")
+    overall: str | None = None  # the trade's Go / No-Go result when the decision was made
 
 
 class TradeJournal(SQLModel, table=True):
