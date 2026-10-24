@@ -29,4 +29,18 @@ jobs:
         run: uv run --no-project python -m unittest discover -s tests
 
       - name: Gatekeeper tests
-        run: uv run pytest
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run pytest -p no:cacheprovider -rfE --timeout=600 2>&1 | tee pytest.log
+
+      # Job logs need admin rights to download; annotations are public. Post the failures
+      # as annotations so anyone can read them from the run page or the API.
+      - name: Report test failures
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "^(FAILED|ERROR) " pytest.log | head -10 | while read -r line; do
+            echo "::error title=pytest::$line"
+          done
+          uv run python scripts/ci_failure_annotation.py pytest.log
