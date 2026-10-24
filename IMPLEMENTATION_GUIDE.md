@@ -40,7 +40,7 @@ Claude will then:
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 | Foundation | M0 | ✅ | 2026-10-24 | 2026-10-24 | CI green on Windows + Ubuntu |
 | 1 | Skill adapter & contracts | M1 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40065638051 green on Windows + Ubuntu |
-| 2 | Storage & background worker | M2 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
+| 2 | Storage & background worker | M2 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40074262315 green on Windows + Ubuntu |
 | 3 | Market Overview, Scanner, News | M3 | ⬜ | | | |
 | 4 | Trade Lab | M4 | ⬜ | | | |
 | 5 | Go / No-Go engine | M5 | ⬜ | | | |
@@ -578,3 +578,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 1 | Runner (classification, lock, isolation, timeout, replay injection), replay workspace, 30+ typed models from real output, wrappers for all 11 tools, 18 contract snapshots, NYSE calendar in the session phase | 107 pytest pass (runner 28, contracts 39, golden e2e 18, clock 19, settings 3), ruff clean; every golden number reproduced; contracts byte-identical across runs; live smoke OK (weekend) | Push `phase-1-adapter` so CI runs, then Phase 2 |
 | 2026-10-24 | 1 | Branch pushed; CI run 40065638051 green on windows-latest and ubuntu-latest. Added `scripts/validate.py` (PASS / FAIL per check for phases 0 and 1, `--live` for the internet checks); merged `phase-1-adapter` into `main` | validate.py --live: 11 of 11 PASS | Push `main`, then Phase 2 |
 | 2026-10-24 | 2 | SQLite store (18 tables, WAL), store functions with dedupe rules, runner timing inside the lock, worker jobs (13) on one New York schedule, live APScheduler + replay simulator, worker CLI (`--list`, `--once`, `--run-for`, `--replay`, pins), Phase 2 checks in `validate.py`, COMMANDS.md worker section | 145 pytest pass (store 11, worker 27); ruff clean; validate.py --live 16/16 PASS; replay day 07:00–16:10 with no errors (TSLA triggered 10:15 at 364.18); live worker 10 min, clean stop | Push `phase-2-worker` so CI runs, then Phase 3 |
+| 2026-10-24 | 2 | Branch pushed; CI run 40074262315 green on windows-latest and ubuntu-latest (lint, 315 upstream tests, 145 Gatekeeper tests). Merged `phase-2-worker` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 3 |
