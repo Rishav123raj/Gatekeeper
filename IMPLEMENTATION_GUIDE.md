@@ -42,7 +42,7 @@ Claude will then:
 | 1 | Skill adapter & contracts | M1 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40065638051 green on Windows + Ubuntu |
 | 2 | Storage & background worker | M2 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40074262315 green on Windows + Ubuntu |
 | 3 | Market Overview, Scanner, News | M3 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40108052325 green on Windows + Ubuntu (after the Windows pin-order fix, Issue 6) |
-| 4 | Trade Lab | M4 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
+| 4 | Trade Lab | M4 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40115151903 green on Windows + Ubuntu |
 | 5 | Go / No-Go engine | M5 | ⬜ | | | |
 | 6 | Risk, Size, Positions, Alerts | M6 | ⬜ | | | |
 | 7 | Journal & Research | M7 | ⬜ | | | |
@@ -607,3 +607,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 3 | Phase 3 CI failed on Windows (run 40106465744). Made CI post failures as annotations + per-test timeout; the next run (40107394227) showed a pin-ordering bug from equal timestamps. Fixed (rowid order), added a test, made the UI test clean up | 195 pytest pass locally with --timeout=600 | Push the fix; when CI is green, merge to `main` |
 | 2026-10-24 | 3 | CI run 40108052325 green on windows-latest and ubuntu-latest (lint, 315 upstream tests, 195 Gatekeeper tests with the 600 s timeout). Merged `phase-3-screens` into `main` | CI green | Push `main`; Issue 4 (a weekday live session, worker + dashboard) when convenient; then Phase 4 |
 | 2026-10-24 | 4 | Trade Lab charts (candles with levels, odds bar, fan, histogram), `gatekeeper/lab.py` (preview, compare, plan-file hash), the Trade Lab page (symbol picker, live chart, entry, exit with preview, Time Machine, compare, external-plan banner, Go / No-Go placeholder); fixed the chart window to use the bars' date (found live); Phase 4 checks in `validate.py`; COMMANDS.md Trade Lab notes | 216 pytest pass (charts 5, lab 9, Trade Lab page 7); ruff clean; validate.py --phase 4 --live 3/3 PASS | Push `phase-4-trade-lab` so CI runs, then Phase 5 |
+| 2026-10-24 | 4 | CI run 40115151903 green on windows-latest (1 min 42 s) and ubuntu-latest (52 s); both jobs concluded success (the API didn't list per-step results for this run). Merged `phase-4-trade-lab` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 5 |
