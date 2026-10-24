@@ -26,7 +26,7 @@ def main() -> int:
             return 1
     for name, data in contracts.items():
         text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
-        (dest / f"{name}.json").write_text(text, encoding="utf-8")
+        (dest / f"{name}.json").write_text(text, encoding="utf-8", newline="\n")
         print(f"wrote tests/contracts/{name}.json")
     print(f"{len(contracts)} contracts saved.")
     return 0
