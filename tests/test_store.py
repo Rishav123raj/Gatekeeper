@@ -171,3 +171,15 @@ def test_clear_mode(engine):
         assert count(s, t.ScanRun) == 1 and count(s, t.ScanHit) == 41  # the live scan stays
         assert count(s, t.Plan) == count(s, t.TmResult) == count(s, t.NewsItem) == 0
         assert store.pinned(s, "replay") == []
+
+
+def test_pins_keep_insertion_order_with_equal_timestamps(engine):
+    """Windows' clock is coarse: pins made in the same instant must still keep their order."""
+    from datetime import UTC, datetime
+
+    same = datetime(2026, 10, 19, 14, 15, tzinfo=UTC)
+    with session(engine) as s:
+        for sym in ("ZZZ", "AAA", "MMM"):
+            s.add(t.PinnedTicker(mode="live", symbol=sym, added_at=same))
+    with session(engine) as s:
+        assert store.pinned(s, "live") == ["ZZZ", "AAA", "MMM"]

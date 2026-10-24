@@ -10,7 +10,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, literal_column
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
@@ -418,7 +418,13 @@ def unpin(s: Session, symbol: str, mode: str) -> None:
 
 
 def pinned(s: Session, mode: str) -> list[str]:
-    q = select(PinnedTicker.symbol).where(PinnedTicker.mode == mode).order_by(col(PinnedTicker.added_at))
+    """Pinned tickers in the order they were pinned.
+
+    Ordered by SQLite's rowid (insertion order), not `added_at`: two pins added in the same
+    instant can share a timestamp (Windows' clock ticks about every 15 ms), which made the
+    order arbitrary.
+    """
+    q = select(PinnedTicker.symbol).where(PinnedTicker.mode == mode).order_by(literal_column("rowid"))
     return list(s.exec(q))
 
 

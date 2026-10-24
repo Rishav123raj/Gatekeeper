@@ -84,11 +84,14 @@ def test_home_context_in_replay(replay_env):
 def test_pin_from_the_watchlist(replay_env):
     at = run("app/pages/2_Watchlist_News.py")
     at.text_input[0].input("nvda, amd")
-    at.button[0].click().run()  # the form's "Pin" button
-    with session(get_engine()) as s:
-        assert store.pinned(s, "replay") == ["TSLA", "NVDA", "AMD"]
-        store.unpin(s, "NVDA", "replay")
-        store.unpin(s, "AMD", "replay")
+    try:
+        at.button[0].click().run()  # the form's "Pin" button
+        with session(get_engine()) as s:
+            assert store.pinned(s, "replay") == ["TSLA", "NVDA", "AMD"]
+    finally:  # leave only TSLA pinned for the other tests, even if this one fails
+        with session(get_engine()) as s:
+            store.unpin(s, "NVDA", "replay")
+            store.unpin(s, "AMD", "replay")
 
 
 def test_replay_sync_moves_forward_then_rebuilds(replay_env):
