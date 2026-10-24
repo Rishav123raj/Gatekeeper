@@ -489,10 +489,24 @@ class BrokerRecord(_M):
         return self.date or (self.at or "")[:10]
 
 
+class Lot(_M):
+    id: str | None = None
+    date: str | None = None
+    shares: float
+    cost: float  # total cost of the lot, not per share
+
+
 class Position(_M):
-    symbol: str
-    qty: float | str | None = None
-    avg_price: float | None = None
+    """One holding in trader/portfolio.json, as ticket.py writes it (`fill` / `result --filled-qty`)."""
+
+    ticker: str
+    shares: float
+    lots: list[Lot] = []
+
+    @property
+    def avg_cost(self) -> float | None:
+        held = sum(lot.shares for lot in self.lots)
+        return round(sum(lot.cost for lot in self.lots) / held, 4) if held else None
 
 
 class Portfolio(_M):

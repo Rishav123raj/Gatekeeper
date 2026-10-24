@@ -44,7 +44,7 @@ Claude will then:
 | 3 | Market Overview, Scanner, News | M3 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40108052325 green on Windows + Ubuntu (after the Windows pin-order fix, Issue 6) |
 | 4 | Trade Lab | M4 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40115151903 green on Windows + Ubuntu |
 | 5 | Go / No-Go engine | M5 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40118467980 green on Windows + Ubuntu |
-| 6 | Risk, Size, Positions, Alerts | M6 | ⬜ | | | |
+| 6 | Risk, Size, Positions, Alerts | M6 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
 | 7 | Journal & Research | M7 | ⬜ | | | |
 | P | Paper-trading period (4 to 8 weeks) | — | ⬜ | | | Usage, not code |
 | 8 | Alpaca paper execution (optional) | M8 | ⬜ | | | |
@@ -393,23 +393,30 @@ uv run python scripts/validate.py --phase 5 --live   # every Phase 5 check, PASS
 **Goal:** see your limits, sizing and open trades, and get alerted on time, especially for flat-by in IST.
 
 ### Tasks
-- [ ] **6.1 `app/pages/4_Risk_Size.py`**: limits card from `trader/config.json`; size result as a bar chart of the four limits with the binding one highlighted; risk report per order (PASS/BLOCK, reasons, warnings); today's risk ledger.
-- [ ] **6.2 "What if" price slider**: copies `trader/` to a temporary sandbox working directory, writes `prices.json` there, runs `size` and `risk --no-write` in the sandbox, and shows the result. The live `trader/` is never touched.
-- [ ] **6.3 `app/pages/5_Positions_Alerts.py`**: positions from `trader/portfolio.json` with last price, distance to stop and target in R, P&L in R only (no dollar projections); a flat-by countdown in NY and IST (red under 10 minutes); alert rules list with add/reset forms; fired-alert history.
-- [ ] **6.4 Flatten helper**: `broker.flatten()`, then `risk.check()`, then show the ticket with clear steps (cancel the bracket legs, then sell) to do in your broker or Claude chat. **No order is sent.**
-- [ ] **6.5 Record fills manually**: a form that calls `broker.fill()` / `broker.result()`, so the portfolio and daily-loss ledger stay correct.
-- [ ] **6.6 `gatekeeper/notify.py`**: `notify(title, body)` → none / Windows toast (`win11toast`) / Telegram (httpx POST to the Bot API). `job_alerts_check` calls it for each new `AlertFired`. Flat-by and stop alerts are marked urgent.
-- [ ] **6.7 After Plan exit**, Trade Lab offers **Add plan alerts** → `alerts.add_from_plan()`.
+- [x] **6.1 `app/pages/4_Risk_Size.py`**: limits card from `trader/config.json`; size result as a bar chart of the four limits with the binding one highlighted; risk report per order (PASS/BLOCK, reasons, warnings); today's risk ledger.
+- [x] **6.2 "What if" price slider**: copies `trader/` to a temporary sandbox working directory, writes `prices.json` there, runs `size` and `risk --no-write` in the sandbox, and shows the result. The live `trader/` is never touched.
+- [x] **6.3 `app/pages/5_Positions_Alerts.py`**: positions from `trader/portfolio.json` with last price, distance to stop and target in R, P&L in R only (no dollar projections); a flat-by countdown in NY and IST (red under 10 minutes); alert rules list with add/reset forms; fired-alert history.
+- [x] **6.4 Flatten helper**: `broker.flatten()`, then `risk.check()`, then show the ticket with clear steps (cancel the bracket legs, then sell) to do in your broker or Claude chat. **No order is sent.**
+- [x] **6.5 Record fills manually**: a form that calls `broker.fill()` / `broker.result()`, so the portfolio and daily-loss ledger stay correct.
+- [x] **6.6 `gatekeeper/notify.py`**: `notify(title, body)` → none / Windows toast (`win11toast`) / Telegram (httpx POST to the Bot API). `job_alerts_check` calls it for each new `AlertFired`. Flat-by and stop alerts are marked urgent.
+- [x] **6.7 After Plan exit**, Trade Lab offers **Add plan alerts** → `alerts.add_from_plan()`.
 
 ### Tests
-- [ ] **6.8** `tests/test_notify.py` with a fake transport.
-- [ ] **6.9** Replay: run the worker from 15:40 to 16:00 with the TSLA plan alerts → the "Flat by close" alert fires once at 15:55 and `notify` is called once.
-- [ ] **6.10** The sandbox "What if" leaves `trader/` byte-for-byte unchanged (hash before and after).
+- [x] **6.8** `tests/test_notify.py` with a fake transport.
+- [x] **6.9** Replay: run the worker from 15:40 to 16:00 with the TSLA plan alerts → the "Flat by close" alert fires once at 15:55 and `notify` is called once.
+- [x] **6.10** The sandbox "What if" leaves `trader/` byte-for-byte unchanged (hash before and after).
+
+### Verify
+```powershell
+uv run pytest tests/test_notify.py tests/test_sandbox.py tests/test_alerts_notify.py tests/test_ui_risk_positions.py -v
+uv run streamlit run app/Home.py      # REPLAY 10:15: Risk & Size (What if), Positions & Alerts (fill, ticket, rules)
+uv run python scripts/validate.py --phase 6 --live   # every Phase 6 check, PASS / FAIL (+ one test notification)
+```
 
 ### Exit criteria
-- [ ] Flat-by alert arrives as a Windows toast (or Telegram) in a live test using a custom `--at` time
-- [ ] The Risk page reproduces PASS (8 shares) and BLOCK (9 shares)
-- [ ] Manually recorded fills update positions and today's ledger
+- [x] Flat-by alert arrives as a Windows toast (or Telegram) in a live test using a custom `--at` time (2026-10-24: a `--at 15:50` "flat by close" rule rang through the worker's alerts job on the replay clock, since time rules only ring on trading days and this was a Saturday, and the real `NOTIFY=toast` notifier handed it to Windows in 0.21 s, non-blocking; your visual confirmation is Issue 7)
+- [x] The Risk page reproduces PASS (8 shares) and BLOCK (9 shares) (the 9 through the What-if sandbox: $52.74 > $50; `tests/test_ui_risk_positions.py`)
+- [x] Manually recorded fills update positions and today's ledger (buy 8 TSLA at 364.20 → position 8 shares, avg 364.20, 1.0R to the stop and the target; a `filled` row in today's ledger)
 
 ---
 
@@ -590,6 +597,14 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-24 | 5 | Size & check only runs check.py when size.py wrote an order | Otherwise check.py would check an older order left in trader/orders.json |
 | 2026-10-24 | 5 | "Copy ticket for Claude" is a code block (Streamlit's copy icon) with `/trader-broker`, the order's index, its risk fingerprint and the ticket text | Gatekeeper never places orders; Claude's own gates (your typed yes, Allow once) stay in charge |
 | 2026-10-24 | 5 | A test (`tests/test_wording.py`) fails on any "buy" / "sell" in the app or the engine outside a "not a buy list" style disclaimer | Exit criterion 3, kept true from now on |
+| 2026-10-24 | 6 | **Fixed the Phase 1 portfolio model**: ticket.py writes positions as `ticker`, `shares` and `lots` (with each lot's total cost), not `symbol` / `qty` / `avg_price`. `Position.avg_cost` is computed from the lots; a test reads the real format | Phase 1 never saw an open position (the contracts have none), so the guess went unnoticed |
+| 2026-10-24 | 6 | The What-if sandbox can also change the order's share count (not only the price) | The exit criterion "reproduces BLOCK (9 shares)" needs it; same throwaway copy, same guarantee |
+| 2026-10-24 | 6 | The Risk page runs size.py (without `--write`) and check.py (`--no-write`) on every view, so it shows the current state without changing anything | Read-only by design; both take about 0.2 s |
+| 2026-10-24 | 6 | Notifications: `win11toast.notify` (returns at once; its `toast()` waits for a click and would hold up the worker) with the library's default app id (Windows can silently drop toasts from an unregistered one); Telegram through the Bot API with httpx, the token never logged; failures return False, never raise. Stop and flat-by alerts are urgent | The worker must never stall or crash on a notification |
+| 2026-10-24 | 6 | `JobContext.notifier`: the live worker uses the real notifier; replays have none (record only), so moving the replay slider never pops up notifications; tests plug in a fake | Task 6.9 with no side effects |
+| 2026-10-24 | 6 | Task 6.9's flat-by alert rings at 15:56, not 15:55: the alerts job runs every 2 minutes (…15:54, 15:56) and the rule rings at the first check after 15:55 | The schedule from Phase 2; the skill's own example shows the same |
+| 2026-10-24 | 6 | `win11toast` is an optional extra (`uv sync --extra notify`), so CI and Linux don't install it; the tests use a fake module | It's Windows-only |
+| 2026-10-24 | 6 | The wording test flagged six lines on the new Positions page ("market sell", "a sell you placed", the fill form's Side field). They describe orders, not advice, but the test stays strict: the sentences now say "closing order", and only the Side field's values `["sell", "buy"]` are allowed, with the reason in the test | Phase 5's guard did its job on Phase 6 code |
 
 ---
 
@@ -603,6 +618,7 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 4 | 2026-10-24 | 2 | The live worker on a weekday session (all jobs firing against real Yahoo / SEC data) is still untested; the 10-minute live run fell on a Saturday, so only the clock ran | Open | Run `uv run python -m worker` one US session (from 18:30 IST on a weekday) with `SEC_USER_AGENT` set and a pin, then check `data\worker.log` and the heartbeats; also open the dashboard during that session and check the live tiles, the Scanner and the worker dot |
 | 5 | 2026-10-24 | 3 | One full `uv run pytest` run stalled for over 10 minutes and was stopped; the next verbose run passed all 194 tests in 128 s, and the stall didn't happen again | Watching | If CI or a local run hangs again, re-run with `-v --durations=15` to see which test, and report it |
 | 6 | 2026-10-24 | 3 | CI run 40106465744 failed on Windows only: `test_pin_from_the_watchlist` got pins as TSLA, AMD, NVDA instead of TSLA, NVDA, AMD (and a second test failed because the first never unpinned). `store.pinned()` sorted by `added_at`, and two pins made in the same instant shared a timestamp on Windows' ~15 ms clock | Fixed | Pins are now ordered by SQLite's rowid (insertion order); new test `test_pins_keep_insertion_order_with_equal_timestamps`; the UI test cleans up in `finally`. Found by making CI post failures as public annotations (job logs need admin rights) |
+| 7 | 2026-10-24 | 6 | The real Windows toast was handed over to Windows (win11toast reported success in 0.21 s) from a replay-clock alert on a Saturday; whether it showed on your screen needs your eyes, and a live flat-by toast during a session is still to be seen | Open | Set `NOTIFY=toast` in `.env`, run `uv sync --extra notify`, then `uv run python scripts/validate.py --phase 6 --live` and look for the "Gatekeeper: test" notification; during a session, add plan alerts and watch for flat-by |
 
 ---
 
@@ -626,3 +642,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 4 | CI run 40115151903 green on windows-latest (1 min 42 s) and ubuntu-latest (52 s); both jobs concluded success (the API didn't list per-step results for this run). Merged `phase-4-trade-lab` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 5 |
 | 2026-10-24 | 5 | Go / No-Go engine (`gatekeeper/readiness.py`: 9 day + 9 trade gates, pure, thresholds in `GATE_*` settings, context builders), store (readiness with repeat-skipping, decisions), DB column upgrades for older databases, the panel / ticket / decision form (`app/components/gates.py`), Home day panel, Trade Lab Size & check + trade panel; Phase 5 checks in `validate.py`; COMMANDS.md Go / No-Go section; `.env.example` thresholds | 307 pytest pass (readiness 80, scenarios 5, Trade Lab UI 11, wording 2); ruff clean; validate.py --phase 5 --live 5/5 PASS (all four scenarios; DB upgrade on a copy of the real database) | Push `phase-5-go-no-go` so CI runs, then Phase 6 |
 | 2026-10-24 | 5 | CI run 40118467980 green on windows-latest (2 min 9 s) and ubuntu-latest (1 min 15 s). Merged `phase-5-go-no-go` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 6 |
+| 2026-10-24 | 6 | Risk & Size page (limits, sizing chart, live check.py, ledger, What-if sandbox), Positions & Alerts page (flat-by countdown NY/IST, positions in R, closing ticket, fills by hand, alert rules, fired history), Trade Lab Add plan alerts, `gatekeeper/notify.py` (toast / Telegram) wired into the alerts job, `gatekeeper/sandbox.py`; fixed the Phase 1 portfolio model; a real toast handed to Windows; Phase 6 checks in `validate.py`; COMMANDS.md section | 335 pytest pass (notify 12, sandbox 5, alert worker 4, pages 7); ruff clean; validate.py --phase 6 --live 3/3 PASS | Push `phase-6-risk-positions-alerts` so CI runs; confirm the toast (Issue 7); then Phase 7 |

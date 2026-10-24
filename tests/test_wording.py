@@ -14,7 +14,11 @@ FILES = [
     ROOT / "gatekeeper" / "regime.py",
     ROOT / "gatekeeper" / "lab.py",
 ]
-ALLOWED = ["not a buy list", 'GO never means "buy"']
+ALLOWED = [
+    "not a buy list",
+    'GO never means "buy"',
+    '["sell", "buy"]',  # the Side field of the fill form: an order's side, not advice
+]
 WORD = re.compile(r"\b(buy|buys|buying|sell|sells|selling)\b", re.IGNORECASE)
 
 

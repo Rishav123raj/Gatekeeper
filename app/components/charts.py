@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from gatekeeper.clock import NY, to_ist
-from gatekeeper.skills.models import TimeMachineResult
+from gatekeeper.skills.models import Sizing, TimeMachineResult
 from gatekeeper.tables import ScanRun
 
 UP, DOWN, FLAT = "#2e7d32", "#c62828", "#78909c"
@@ -351,5 +351,37 @@ def tm_close_hist(tm: TimeMachineResult, height: int = 260) -> go.Figure:
         bargap=0,
         xaxis={"title": f"price at {tm.mc.until} NY"},
         yaxis={"title": "replays"},
+    )
+    return fig
+
+
+# --- Risk & Size (Phase 6) -------------------------------------------------------------------
+
+
+def size_limits_bar(sizing: Sizing, height: int = 220) -> go.Figure:
+    """Shares allowed by each of size.py's four limits; the one that decides the size is highlighted."""
+    names = [lim.name for lim in sizing.limits]
+    shares = [lim.shares for lim in sizing.limits]
+    colors = [LEVEL_COLORS["entry"] if lim.binds else "#b0bec5" for lim in sizing.limits]
+    fig = go.Figure(
+        go.Bar(
+            x=shares,
+            y=names,
+            orientation="h",
+            marker_color=colors,
+            text=[
+                f"{n} shares{' · decides' if lim.binds else ''}"
+                for n, lim in zip(shares, sizing.limits, strict=True)
+            ],
+            textposition="auto",
+            customdata=[lim.how for lim in sizing.limits],
+            hovertemplate="%{y}: %{x} shares<br>%{customdata}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        height=height,
+        margin={"l": 0, "r": 0, "t": 10, "b": 0},
+        xaxis={"title": "shares"},
+        yaxis={"autorange": "reversed"},
     )
     return fig

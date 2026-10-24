@@ -88,6 +88,31 @@ In LIVE the tiles come straight from Yahoo (cached a minute), and everything els
 comes from the worker: start it in a second window (`scripts\dev.ps1` starts both).
 The sidebar's worker dot is green when a job ran in the last 3 minutes.
 
+### Risk & Size, Positions & Alerts, notifications (Phase 6)
+
+| Page | What it shows |
+| --- | --- |
+| **Risk & Size** | Your limits (from `trader/config.json`), how the current plan is sized (the four limits as a chart, the one that decides marked), what check.py says about `trader/orders.json` right now, today's ledger, and **What if**: a price and a share count run on a throwaway copy of `trader/` (your folder is never changed) |
+| **Positions & Alerts** | The flat-by countdown (NY and IST, red in the last 10 minutes), open positions with P&L and distance to the stop and target **in R**, **Prepare the closing ticket** (a market sell checked by check.py, with the steps: cancel the bracket's legs, place the sell after your yes, record the fill), **Record a fill** / **Record result** (through ticket.py), your alert rules (add, re-arm), and the alerts that rang |
+
+The Trade Lab gained **Add plan alerts** (the stop, the target and "flat by close" for today).
+
+**Notifications.** When an alert rings, the worker sends it on the channel in `.env`:
+
+```ini
+NOTIFY=toast                # a Windows notification; install once: uv sync --extra notify
+NOTIFY=telegram             # a message from your bot:
+TELEGRAM_BOT_TOKEN=...      #   from @BotFather
+TELEGRAM_CHAT_ID=...        #   your chat id
+NOTIFY=none                 # nothing (the default)
+```
+
+Stop and flat-by alerts are marked urgent. Replays never send notifications. Test delivery
+with `uv run python scripts/validate.py --phase 6 --live`.
+
+> `uv sync` without `--extra notify` removes the toast package again; use
+> `uv sync --extra notify` if you keep `NOTIFY=toast`.
+
 ### Go / No-Go (Phase 5)
 
 Two panels answer two questions, each check with its reason (hover a line for its source):
@@ -209,7 +234,9 @@ One command checks everything a phase delivered and prints a PASS / FAIL line pe
 
 | What | Command |
 | --- | --- |
-| **Validate Phase 5** (offline) | `uv run python scripts/validate.py --phase 5` |
+| **Validate Phase 6** (offline) | `uv run python scripts/validate.py --phase 6` |
+| Validate Phase 6 + send one test notification | `uv run python scripts/validate.py --phase 6 --live` |
+| Validate Phase 5 (offline) | `uv run python scripts/validate.py --phase 5` |
 | Validate Phase 5, including the live day panel | `uv run python scripts/validate.py --phase 5 --live` |
 | Validate Phase 4 (offline) | `uv run python scripts/validate.py --phase 4` |
 | Validate Phase 4, including the live Trade Lab check | `uv run python scripts/validate.py --phase 4 --live` |
@@ -237,6 +264,14 @@ Phase 1's checks:
 It exits 0 when every check passed. During a US session (from 19:15 IST on
 weekdays, 20:15 IST from Nov 2), `--live` shows SPY's real status, for example
 `waiting` or `triggered`. On weekends and at night it shows `closed` / `no-data`.
+
+Phase 6's checks:
+
+| Check | What it proves |
+| --- | --- |
+| notifications, sandbox, alert worker | Telegram and toast messages (fake transports), urgent stop / flat-by alerts, failures that never raise; the what-if leaves `trader/` byte-for-byte unchanged and gives PASS at 8 shares, BLOCK at 9 ($52.74), BLOCK and a refusal at 366.48; the replay worker rings flat-by once at 15:56 and notifies once; replays don't notify; the portfolio reads the skills' format |
+| Risk & Size and Positions & Alerts pages | Limits, sizing and PASS on the Risk page; the what-if BLOCK at 9 shares; the flat-by countdown (15:55 NY · 01:25 IST); a recorded fill shows the position in R and enters the ledger; the closing ticket (a sell, PASS as an exit); adding a rule; the Trade Lab's Add plan alerts |
+| live: a test notification (`--live`) | One notification on your `NOTIFY` channel (nothing when `NOTIFY=none`) |
 
 Phase 5's checks:
 
@@ -463,7 +498,6 @@ These commands will work once their phase is built. This file is updated at the 
 | Phase | Command | What it does |
 | --- | --- | --- |
 | 3 | `GATEKEEPER_MODE=replay` in `.env` | Dashboard in replay mode, with a time slider |
-| 6 | `uv sync --extra notify` | Windows toast notifications |
 | 8 | `uv sync --extra broker` | Alpaca **paper** trading support (optional phase) |
 | 9 | `powershell -ExecutionPolicy Bypass -File scripts\install_task.ps1` | Starts the worker automatically at login |
 | 9 | `powershell -ExecutionPolicy Bypass -File scripts\keep_awake.ps1` | Keeps the PC awake during the US session |

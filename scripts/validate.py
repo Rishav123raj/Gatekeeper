@@ -368,6 +368,21 @@ def check_live_day_panel():
     return bool(panel), f"Today: {verdict} · {first.split('·', 1)[-1].strip()}"
 
 
+# --- Phase 6 ---------------------------------------------------------------------------------
+
+
+def check_live_notification():
+    """One test notification on your NOTIFY channel (nothing is sent when NOTIFY=none)."""
+    from gatekeeper.notify import notify
+    from gatekeeper.settings import get_settings
+
+    s = get_settings()
+    if s.notify == "none":
+        return True, "NOTIFY=none in .env: nothing sent (set toast or telegram to test delivery)"
+    ok = notify("Gatekeeper: test", "If you can read this, alerts reach you.", settings=s)
+    return ok, f"NOTIFY={s.notify}: {'handed over' if ok else 'failed (see the log)'}"
+
+
 PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
     # (name, check, needs internet)
     0: [
@@ -417,6 +432,15 @@ PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
         ),
         ("your database upgrades in place (a copy)", check_db_upgrade, False),
         ("live: Home day-level Go / No-Go", check_live_day_panel, True),
+    ],
+    6: [
+        (
+            "notifications, sandbox, alert worker",
+            pytest("tests/test_notify.py", "tests/test_sandbox.py", "tests/test_alerts_notify.py"),
+            False,
+        ),
+        ("Risk & Size and Positions & Alerts pages", pytest("tests/test_ui_risk_positions.py"), False),
+        ("live: a test notification", check_live_notification, True),
     ],
 }
 

@@ -21,6 +21,7 @@ from sqlalchemy.engine import Engine
 from gatekeeper import regime, store, yahoo
 from gatekeeper.clock import SessionTimes, as_ny, load_session_times, market_day, session_phase
 from gatekeeper.db import session
+from gatekeeper.notify import is_urgent
 from gatekeeper.runner import RunResult, SkillRunner
 from gatekeeper.settings import Settings
 from gatekeeper.skills import alerts, analyst, broker, entry, news, pelosi, scanner
@@ -75,6 +76,9 @@ class JobContext:
     make_runner: Callable[[datetime, str], SkillRunner]  # (New York time, job) -> runner
     clock: Callable[[], datetime]  # New York now (the simulated clock in replay)
     day_lookup: Callable[[date], ClockStatus | None] = market_day
+    # Sends each fired alert out (gatekeeper.notify.notify live). None: record only (replays
+    # don't pop up notifications while you move the slider).
+    notifier: Callable[..., bool] | None = None
     _days: dict[date, ClockStatus | None] = field(default_factory=dict)
 
     def now(self) -> datetime:
@@ -285,7 +289,15 @@ def job_alerts_check(ctx: JobContext) -> str:
     _checked(res, "alerts")
     with session(ctx.engine) as s:
         fired = store.save_alert_fired(s, result, ctx.mode)
-    return "; ".join(f"RANG {a.rule_id}" for a in fired) or "nothing rang"
+        for a in fired:
+            if ctx.notifier is not None:
+                urgent = is_urgent(a.rule_id, a.message)
+                title = ("URGENT · " if urgent else "") + "Gatekeeper" + (f": {a.symbol}" if a.symbol else "")
+                a.notified = bool(ctx.notifier(title, a.message, urgent=urgent))
+                s.add(a)
+    sent = sum(1 for a in fired if a.notified)
+    rang = "; ".join(f"RANG {a.rule_id}" for a in fired)
+    return (rang + (f" ({sent} notified)" if ctx.notifier else "")) if fired else "nothing rang"
 
 
 def job_pelosi(ctx: JobContext) -> str:

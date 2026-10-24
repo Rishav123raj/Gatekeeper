@@ -65,7 +65,16 @@ def live_context(settings: Settings, engine: Engine) -> JobContext:
             on_result=store.skill_run_logger(engine, "live", job),
         )
 
-    return JobContext(engine=engine, mode="live", settings=settings, make_runner=make_runner, clock=now_ny)
+    from gatekeeper.notify import notify
+
+    return JobContext(
+        engine=engine,
+        mode="live",
+        settings=settings,
+        make_runner=make_runner,
+        clock=now_ny,
+        notifier=lambda title, body, urgent=False: notify(title, body, urgent=urgent, settings=settings),
+    )
 
 
 class SimClock:

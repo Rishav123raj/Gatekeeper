@@ -19,7 +19,7 @@ from gatekeeper import lab, store
 from gatekeeper.clock import NY, load_session_times
 from gatekeeper.db import session
 from gatekeeper.readiness import build_trade_context, evaluate_trade
-from gatekeeper.skills import broker, budget, entry, exit, risk, timemachine
+from gatekeeper.skills import alerts, broker, budget, entry, exit, risk, timemachine
 from gatekeeper.skills.models import EntryStatus, ExitPlan, TimeMachineResult
 
 page = setup_page("Trade Lab", "🧪")
@@ -291,6 +291,20 @@ def exit_panel(p: Page, symbol: str, ls: dict) -> None:
         )
         for w in plan.warnings:
             st.warning(w)
+        if st.button(
+            "Add plan alerts",
+            key="lab_alerts",
+            help="alerts.py adds three rules for today: the stop, the target and 'flat by close'.",
+        ):
+            rules, res = alerts.add_from_plan(runner=p.runner("trade_lab"))
+            mine = [r.id for r in rules if r.date == plan.date and (r.symbol or "") in (plan.symbol, "")]
+            if res.ok:
+                st.success(
+                    f"Alerts set: {', '.join(mine)}. The worker checks them every 2 minutes; see "
+                    "Positions & Alerts."
+                )
+            else:
+                st.error(res.message or res.status)
 
 
 def tm_panel(p: Page, ls: dict) -> str | None:

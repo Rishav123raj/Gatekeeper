@@ -18,7 +18,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-notify = ["win11toast>=0.35"]
+notify = [
+    "win11toast>=0.35",
+]
 broker = ["alpaca-py>=0.30"]
 
 [dependency-groups]
