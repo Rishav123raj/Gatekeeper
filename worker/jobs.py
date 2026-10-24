@@ -18,7 +18,7 @@ from typing import Any
 
 from sqlalchemy.engine import Engine
 
-from gatekeeper import store
+from gatekeeper import regime, store, yahoo
 from gatekeeper.clock import SessionTimes, as_ny, load_session_times, market_day, session_phase
 from gatekeeper.db import session
 from gatekeeper.runner import RunResult, SkillRunner
@@ -36,18 +36,19 @@ NEWS_FROM_SCAN = 10  # news also covers the latest scan's top hits
 
 WEEKDAYS = "mon-fri"
 
-# job -> cron rules (New York time). Jobs fire in this order when several are due at once.
+# job -> cron rules (New York time). Jobs fire in this order when several are due at once
+# (the market context runs after the ORB scan, so its breadth uses that minute's scan).
 SCHEDULE: dict[str, list[dict[str, Any]]] = {
     "clock": [{"minute": "*"}],
     "universe": [{"day_of_week": "sun", "hour": 18, "minute": 0}],
     "analyst_watchlist": [{"day_of_week": WEEKDAYS, "hour": 7, "minute": 0}],
     "daily_scan": [{"day_of_week": WEEKDAYS, "hour": 8, "minute": 30}],
     "premarket_news": [{"day_of_week": WEEKDAYS, "hour": 8, "minute": 45}],
-    "regime": [{"day_of_week": WEEKDAYS, "hour": "9-15", "minute": "*/5"}],
     "orb_scan": [
         {"day_of_week": WEEKDAYS, "hour": 9, "minute": 50},
         {"day_of_week": WEEKDAYS, "hour": "10-15", "minute": "0,15,30,45"},
     ],
+    "regime": [{"day_of_week": WEEKDAYS, "hour": "9-15", "minute": "*/5"}],
     "intraday_news": [{"day_of_week": WEEKDAYS, "hour": "9-15", "minute": "*/15"}],
     "entry_watch": [{"day_of_week": WEEKDAYS, "hour": "9-15", "minute": "*"}],
     "quotes": [{"day_of_week": WEEKDAYS, "hour": "9-15", "minute": "*/5"}],
@@ -97,6 +98,10 @@ class JobContext:
     def trading_day(self) -> bool:
         day = self.day()
         return self.now().weekday() < 5 and (day is None or not day.calendar_known or day.trading_day)
+
+    def yahoo(self) -> yahoo.Source:
+        """The dashboard's own bars: live Yahoo, or the recorded charts at the replay time."""
+        return yahoo.source(self.mode, self.now(), self.settings.skills_path / "tests" / "fixtures")
 
     def tickers(self, kind: str) -> list[str]:
         if self.mode == "replay" and kind in REPLAY_TICKERS:
@@ -197,8 +202,17 @@ def job_intraday_news(ctx: JobContext) -> str:
 
 
 def job_regime(ctx: JobContext) -> str:
+    """SPY / QQQ / IWM / VIX and the breakout breadth, every 5 minutes in the session."""
     need_phase(ctx, "regime", OPEN_PHASES)
-    raise Skip("market context arrives in Phase 3")
+    today = f"{ctx.now():%Y-%m-%d}"
+    with session(ctx.engine) as s:
+        runs = store.scan_runs(s, ctx.mode, "orb", today)
+        latest = runs[-1] if runs else None
+        breadth_pct = regime.breadth(latest.hits_count, latest.scanned) if latest else None
+    snap = regime.snapshot(ctx.yahoo(), breadth_pct)
+    with session(ctx.engine) as s:
+        store.save_regime(s, snap, ctx.mode)
+    return f"{snap.label} (score {snap.score:+d}); " + "; ".join(snap.reasons)
 
 
 def job_orb_scan(ctx: JobContext) -> str:
@@ -295,8 +309,8 @@ JOBS: dict[str, Callable[[JobContext], str]] = {
     "analyst_watchlist": job_analyst_watchlist,
     "daily_scan": job_daily_scan,
     "premarket_news": job_premarket_news,
-    "regime": job_regime,
     "orb_scan": job_orb_scan,
+    "regime": job_regime,
     "intraday_news": job_intraday_news,
     "entry_watch": job_entry_watch,
     "quotes": job_quotes,

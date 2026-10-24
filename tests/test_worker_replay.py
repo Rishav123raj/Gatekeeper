@@ -131,7 +131,8 @@ def test_heartbeats_for_every_job_that_fired(day):
         beats = {h.job: h for h in store.heartbeats(s, "replay")}
     assert set(beats) == set(JOBS) - {"universe"}  # universe runs on Sundays
     assert all(h.errors == 0 for h in beats.values())
-    assert beats["regime"].last_detail == "market context arrives in Phase 3"
+    # The recorded day has no index or VIX charts: only breadth is known, so the label is "unknown".
+    assert beats["regime"].last_status == "ok" and beats["regime"].last_detail.startswith("unknown")
     assert beats["eod_journal"].last_status == "skipped"
 
 

@@ -20,12 +20,13 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.engine import Engine
 
 from gatekeeper import store
-from gatekeeper.clock import NY, now_ny
+from gatekeeper.clock import NY, as_ny, now_ny
 from gatekeeper.db import session
-from gatekeeper.replay import prepare_workspace
+from gatekeeper.replay import ReplayContext, default_paths, prepare_workspace
 from gatekeeper.runner import SkillRunner
 from gatekeeper.settings import Settings
-from worker.jobs import JOBS, SCHEDULE, JobContext, run_job
+from gatekeeper.tables import ReplayState, utcnow
+from worker.jobs import JOBS, SCHEDULE, JobContext, enabled_jobs, run_job
 
 log = logging.getLogger("gatekeeper.worker")
 
@@ -83,10 +84,18 @@ def replay_context(
     *,
     workspace: Path | None = None,
     skills_dir: Path | None = None,
+    fresh: bool = True,
 ) -> tuple[JobContext, SimClock]:
-    """A fresh replay workspace and a context whose clock the simulator moves."""
+    """A replay context whose clock the simulator moves; `fresh` wipes the workspace's trader/ first."""
     clock = SimClock(datetime.combine(day, start, NY))
-    rctx = prepare_workspace(clock.t.replace(tzinfo=None), workspace, skills_dir)
+    if fresh:
+        rctx = prepare_workspace(clock.t.replace(tzinfo=None), workspace, skills_dir)
+    else:
+        dws, dskills = default_paths()
+        skills = Path(skills_dir or dskills)
+        rctx = ReplayContext(
+            clock.t.replace(tzinfo=None), Path(workspace or dws), skills / "tests" / "fixtures"
+        )
 
     def make_runner(now: datetime, job: str) -> SkillRunner:
         return SkillRunner.from_settings(
@@ -158,6 +167,61 @@ def start_replay(
             store.pin(s, sym, "replay")
     ctx, clock = replay_context(settings, engine, day, start, workspace=workspace, skills_dir=skills_dir)
     return simulate(ctx, clock, day, start, end, jobs, speed=speed, on_fire=on_fire)
+
+
+REPLAY_DAY_START = time(7, 0)
+
+
+def sync_replay(
+    settings: Settings,
+    engine: Engine,
+    until: datetime,
+    *,
+    workspace: Path | None = None,
+    skills_dir: Path | None = None,
+) -> str:
+    """Brings the replay day up to `until` (New York), simulating only what hasn't run yet.
+
+    Moving forward continues from the last simulated minute; moving back (or a new day, or a
+    missing workspace) starts again from 07:00 with a fresh workspace, keeping the replay pins.
+    Returns what it did, in one line.
+    """
+    until = as_ny(until).replace(second=0, microsecond=0)
+    day, end = until.date(), until.time()
+    ws = Path(workspace or default_paths()[0])
+    jobs = enabled_jobs(settings)
+    with session(engine) as s:
+        st = s.get(ReplayState, 1)
+        pins = store.pinned(s, "replay") or ["TSLA"]
+    done = None
+    if (
+        st
+        and st.day == day.isoformat()
+        and st.workspace == str(ws)
+        and (ws / "trader" / "config.json").exists()
+    ):
+        done = datetime.strptime(st.until_ny, "%H:%M").time()
+    if done is not None and done == end:
+        return f"replay already at {end:%H:%M}"
+    if done is not None and done < end:
+        nxt = (datetime.combine(day, done) + timedelta(minutes=1)).time()
+        ctx, clock = replay_context(
+            settings, engine, day, nxt, workspace=ws, skills_dir=skills_dir, fresh=False
+        )
+        counts = simulate(ctx, clock, day, nxt, end, jobs)
+        how = f"replay moved on from {done:%H:%M} to {end:%H:%M}"
+    else:
+        start = min(REPLAY_DAY_START, end)
+        counts = start_replay(
+            settings, engine, day, start, end, jobs, pins=pins, workspace=ws, skills_dir=skills_dir
+        )
+        how = f"replay rebuilt from {start:%H:%M} to {end:%H:%M}"
+    with session(engine) as s:
+        st = s.get(ReplayState, 1) or ReplayState(day=day.isoformat(), until_ny="", workspace=str(ws))
+        st.day, st.until_ny, st.workspace, st.updated_at = day.isoformat(), f"{end:%H:%M}", str(ws), utcnow()
+        s.add(st)
+    errors = sum(n for (_, status), n in counts.items() if status == "error")
+    return how + (f" ({errors} job errors, see the worker health table)" if errors else "")
 
 
 # --- live scheduler --------------------------------------------------------------------------

@@ -27,6 +27,7 @@ from gatekeeper.tables import (
     PinnedTicker,
     Plan,
     PriceMove,
+    RegimeSnapshot,
     RiskVerdict,
     ScanHit,
     ScanRun,
@@ -34,6 +35,8 @@ from gatekeeper.tables import (
     TmResult,
     utcnow,
 )
+
+IMPORTANT_TAGS = {"earnings", "halt", "legal", "regulatory", "risk"}
 
 
 def dump(model: Any) -> Any:
@@ -445,3 +448,98 @@ def clear_mode(s: Session, mode: str) -> None:
     s.exec(delete(ScanRun).where(ScanRun.mode == mode))
     for table in MODE_TABLES:
         s.exec(delete(table).where(table.mode == mode))
+
+
+# --- reads for the dashboard (Phase 3) -------------------------------------------------------
+
+
+def save_regime(s: Session, regime: Any, mode: str) -> RegimeSnapshot:
+    spy, qqq, iwm = (regime.indexes.get(k) for k in ("SPY", "QQQ", "IWM"))
+    row = RegimeSnapshot(
+        mode=mode,
+        spy_chg=spy.change_pct if spy else None,
+        qqq_chg=qqq.change_pct if qqq else None,
+        iwm_chg=iwm.change_pct if iwm else None,
+        spy_vs_vwap=spy.vs_vwap_pct if spy else None,
+        vix=regime.vix.price,
+        vix_chg=regime.vix.change_pct,
+        breadth_orb_up=regime.breadth_pct,
+        label=regime.label,
+        payload=regime.to_dict(),
+    )
+    s.add(row)
+    return row
+
+
+def latest_regime(s: Session, mode: str) -> RegimeSnapshot | None:
+    q = select(RegimeSnapshot).where(RegimeSnapshot.mode == mode).order_by(col(RegimeSnapshot.id).desc())
+    return s.exec(q).first()
+
+
+def scan_runs(s: Session, mode: str, scan_mode: str, day: str) -> list[ScanRun]:
+    q = select(ScanRun).where(
+        ScanRun.mode == mode, ScanRun.scan_mode == scan_mode, ScanRun.session_date == day
+    )
+    return list(s.exec(q.order_by(col(ScanRun.id))))
+
+
+def news_items(
+    s: Session,
+    mode: str,
+    *,
+    symbols: list[str] | None = None,
+    since: datetime | None = None,
+    limit: int = 200,
+) -> list[NewsItem]:
+    q = select(NewsItem).where(NewsItem.mode == mode)
+    if symbols:
+        q = q.where(col(NewsItem.symbol).in_(symbols))
+    if since is not None:
+        q = q.where(col(NewsItem.published_at) >= since)
+    return list(s.exec(q.order_by(col(NewsItem.published_at).desc()).limit(limit)))
+
+
+def is_important(item: NewsItem) -> bool:
+    return item.important or bool(set(item.tags or []) & IMPORTANT_TAGS)
+
+
+def latest_moves(s: Session, mode: str) -> dict[str, PriceMove]:
+    """The newest price line per ticker."""
+    out: dict[str, PriceMove] = {}
+    for mv in s.exec(select(PriceMove).where(PriceMove.mode == mode).order_by(col(PriceMove.id).desc())):
+        out.setdefault(mv.symbol, mv)
+    return out
+
+
+def entries_for_day(s: Session, mode: str, day: str) -> dict[str, EntrySignal]:
+    """The latest entry status per ticker for one session."""
+    q = select(EntrySignal).where(EntrySignal.mode == mode, EntrySignal.session_date == day)
+    out: dict[str, EntrySignal] = {}
+    for e in s.exec(q.order_by(col(EntrySignal.id).desc())):
+        out.setdefault(e.symbol, e)
+    return out
+
+
+def alerts_for_day(s: Session, mode: str, day: str) -> list[AlertFired]:
+    q = select(AlertFired).where(AlertFired.mode == mode, AlertFired.session_date == day)
+    return list(s.exec(q.order_by(col(AlertFired.id).desc())))
+
+
+def latest_earnings(s: Session, mode: str) -> dict[str, EarningsSnapshot]:
+    out: dict[str, EarningsSnapshot] = {}
+    q = (
+        select(EarningsSnapshot)
+        .where(EarningsSnapshot.mode == mode)
+        .order_by(col(EarningsSnapshot.id).desc())
+    )
+    for e in s.exec(q):
+        out.setdefault(e.symbol, e)
+    return out
+
+
+def set_next_report_date(s: Session, symbol: str, mode: str, day: str | None) -> EarningsSnapshot:
+    """Records (or clears) the next earnings date by hand: on the latest snapshot, or a new one."""
+    row = latest_earnings(s, mode).get(symbol.upper()) or EarningsSnapshot(mode=mode, symbol=symbol.upper())
+    row.next_report_date = day
+    s.add(row)
+    return row

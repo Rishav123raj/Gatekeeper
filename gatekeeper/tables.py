@@ -312,6 +312,16 @@ class PelosiFiling(SQLModel, table=True):
     payload: dict[str, Any] | None = _json()
 
 
+class ReplayState(SQLModel, table=True):
+    """How far the replay day has been simulated, so the dashboard's time slider only runs what's new."""
+
+    id: int = Field(default=1, primary_key=True)
+    day: str
+    until_ny: str  # "HH:MM", the last simulated minute
+    workspace: str
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class PinnedTicker(SQLModel, table=True):
     """The tickers the entry watch follows."""
 

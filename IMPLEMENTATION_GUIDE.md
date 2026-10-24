@@ -41,7 +41,7 @@ Claude will then:
 | 0 | Foundation | M0 | ✅ | 2026-10-24 | 2026-10-24 | CI green on Windows + Ubuntu |
 | 1 | Skill adapter & contracts | M1 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40065638051 green on Windows + Ubuntu |
 | 2 | Storage & background worker | M2 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40074262315 green on Windows + Ubuntu |
-| 3 | Market Overview, Scanner, News | M3 | ⬜ | | | |
+| 3 | Market Overview, Scanner, News | M3 | 🟨 | 2026-10-24 | | Built locally (194 tests); CI pending a push |
 | 4 | Trade Lab | M4 | ⬜ | | | |
 | 5 | Go / No-Go engine | M5 | ⬜ | | | |
 | 6 | Risk, Size, Positions, Alerts | M6 | ⬜ | | | |
@@ -282,31 +282,32 @@ uv run python scripts/validate.py --phase 2 --live   # every Phase 2 check, PASS
 **Goal:** the first useful screens: what is the market doing, what matched a setup, what news is out.
 
 ### Tasks
-- [ ] **3.1 `gatekeeper/yahoo.py`**: `bars(symbol, range_="1d", interval="5m") -> pd.DataFrame[ts, open, high, low, close, volume]`, `quote(symbols)`. Uses httpx with a 10 s timeout, the user agent `gatekeeper/0.1`, query2 then query1 fallback, a 0.5 s pause between calls, a 60 s cache; in replay it reads fixture files and is cut at `replay_now`.
-- [ ] **3.2 `gatekeeper/regime.py`**: `snapshot() -> RegimeSnapshot` for SPY, QQQ, IWM (% change, price vs. session VWAP, vs. the opening range, daily close vs. the 20- and 50-day average) and `^VIX` (level, % change); `breadth` = ORB hits ÷ usable charts from the latest ORB `ScanRun`; a `label` among `supportive | mixed | hostile` with the rule written down in the docstring. In replay, mark any series without a fixture as "n/a" rather than failing.
-- [ ] **3.3** Turn the Phase 2 `job_regime` stub into the real job.
-- [ ] **3.4 `app/components/tables.py`**: shared table formatting (price, %, time in dual zones).
-- [ ] **3.5 `app/components/charts.py` (part 1)**: `sparkline(df)`, `breadth_line(scan_runs)`.
-- [ ] **3.6 Sidebar (all pages)**: mode badge (LIVE/REPLAY), replay date and time slider (writes `replay_now` to session state and settings), worker heartbeat dot.
-- [ ] **3.7 `app/Home.py`**: index tiles with sparklines, VIX tile, breadth gauge, today's budget bars (from `trader/state/broker.json` via `broker.log()`), the "What changed" feed (latest hits, important news, fired alerts), the worker-health table. A `st.fragment(run_every="30s")` wraps the live parts. The day-level Go / No-Go panel is a placeholder until Phase 5.
-- [ ] **3.8 `app/pages/1_Scanner.py`**: tabs for Pre-market and ORB; filters; a table with news and earnings badges; buttons **Pin**, **Open in Trade Lab** (sets `st.session_state.symbol` and calls `st.switch_page`), **Run scan now** (disabled while running).
-- [ ] **3.9 `app/pages/2_Watchlist_News.py`**: pinned tickers with last price, % change, MOVING flag, latest `EntrySignal`; a news stream with tag chips, `!` badges and links, filterable by ticker and tag; a manual "next earnings date" field per ticker (stored in `EarningsSnapshot.next_report_date`).
-- [ ] **3.10** Every page footer: "Data: Yahoo (free, delayed, unofficial) · Not financial advice."
+- [x] **3.1 `gatekeeper/yahoo.py`**: `bars(symbol, range_="1d", interval="5m") -> pd.DataFrame[ts, open, high, low, close, volume]`, `quote(symbols)`. Uses httpx with a 10 s timeout, the user agent `gatekeeper/0.1`, query2 then query1 fallback, a 0.5 s pause between calls, a 60 s cache; in replay it reads fixture files and is cut at `replay_now`.
+- [x] **3.2 `gatekeeper/regime.py`**: `snapshot() -> RegimeSnapshot` for SPY, QQQ, IWM (% change, price vs. session VWAP, vs. the opening range, daily close vs. the 20- and 50-day average) and `^VIX` (level, % change); `breadth` = ORB hits ÷ usable charts from the latest ORB `ScanRun`; a `label` among `supportive | mixed | hostile` with the rule written down in the docstring. In replay, mark any series without a fixture as "n/a" rather than failing.
+- [x] **3.3** Turn the Phase 2 `job_regime` stub into the real job.
+- [x] **3.4 `app/components/tables.py`**: shared table formatting (price, %, time in dual zones).
+- [x] **3.5 `app/components/charts.py` (part 1)**: `sparkline(df)`, `breadth_line(scan_runs)`.
+- [x] **3.6 Sidebar (all pages)**: mode badge (LIVE/REPLAY), replay date and time slider (writes `replay_now` to session state and settings), worker heartbeat dot.
+- [x] **3.7 `app/Home.py`**: index tiles with sparklines, VIX tile, breadth gauge, today's budget bars (from `trader/state/broker.json` via `broker.log()`), the "What changed" feed (latest hits, important news, fired alerts), the worker-health table. A `st.fragment(run_every="30s")` wraps the live parts. The day-level Go / No-Go panel is a placeholder until Phase 5.
+- [x] **3.8 `app/pages/1_Scanner.py`**: tabs for Pre-market and ORB; filters; a table with news and earnings badges; buttons **Pin**, **Open in Trade Lab** (sets `st.session_state.symbol` and calls `st.switch_page`), **Run scan now** (disabled while running).
+- [x] **3.9 `app/pages/2_Watchlist_News.py`**: pinned tickers with last price, % change, MOVING flag, latest `EntrySignal`; a news stream with tag chips, `!` badges and links, filterable by ticker and tag; a manual "next earnings date" field per ticker (stored in `EarningsSnapshot.next_report_date`).
+- [x] **3.10** Every page footer: "Data: Yahoo (free, delayed, unofficial) · Not financial advice."
 
 ### Tests
-- [ ] **3.11** `tests/test_regime.py`: label rule on synthetic data.
-- [ ] **3.12** `tests/test_ui_smoke.py` (`streamlit.testing.v1.AppTest`): Home, Scanner and News load in replay at 10:15 without exceptions; the Scanner table contains TSLA.
+- [x] **3.11** `tests/test_regime.py`: label rule on synthetic data.
+- [x] **3.12** `tests/test_ui_smoke.py` (`streamlit.testing.v1.AppTest`): Home, Scanner and News load in replay at 10:15 without exceptions; the Scanner table contains TSLA.
 
 ### Verify
 ```powershell
 uv run pytest tests/test_regime.py tests/test_ui_smoke.py -v
 uv run streamlit run app/Home.py      # switch to REPLAY, slide to 10:15
+uv run python scripts/validate.py --phase 3 --live   # every Phase 3 check, PASS / FAIL
 ```
 
 ### Exit criteria
-- [ ] Replay 10:15: the Scanner shows 41 ORB hits (default $5 floor), including TSLA with range 354.47 to 362.18
-- [ ] Replay: the TSLA news stream shows the three documented morning headlines with tags
-- [ ] Live: Home loads during the US session with real index tiles
+- [x] Replay 10:15: the Scanner shows 41 ORB hits (default $5 floor), including TSLA with range 354.47 to 362.18 (`test_scanner_shows_41_orb_hits_with_tsla`)
+- [x] Replay: the TSLA news stream shows the three documented morning headlines with tags (earnings; earnings + deal; macro)
+- [x] Live: Home loads with real index tiles (SPY $759.97, QQQ $704.40, IWM $275.75, VIX 19.45, label "hostile"; checked on Saturday 2026-10-24 with Friday's session data, so a re-check during a session is folded into Issue 4)
 
 ---
 
@@ -552,6 +553,13 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-24 | 2 | Job tickers: live uses `CORE_TICKERS` + pinned (+ the latest scan's top 10 for news); replay uses the recorded data (the 234-chart wall for scans, TSLA for news, AAPL and KO for earnings). The live daily scan builds the universe first if `trader/universe.txt` is missing | Replay can only use what was recorded |
 | 2026-10-24 | 2 | New settings `DISABLED_JOBS` and `WORKER_LOCK_TIMEOUT` (300 s); new worker options `--list`, `--once JOB`, `--run-for`, `--add-pin/--remove-pin/--pins`, `--db`, `--quiet`, `--keep`; `scripts/validate.py` gained Phase 2 checks | Task 2.8 and day-to-day use |
 | 2026-10-24 | 2 | The day test runs 07:00 to 16:10 (not 08:00) so the 07:00 earnings job is included; it expects 23 ORB scans (25 fire times; 15:30 and 15:45 are after the entry cutoff) | Covers every worker-filled table |
+| 2026-10-24 | 3 | **In replay the dashboard drives the simulator itself**: the sidebar's time slider calls `sync_replay`, which simulates only the minutes since the last position (a new `ReplayState` table remembers it) and rebuilds from 07:00 when the slider moves back (about 30 s), keeping the replay pins. The separate worker isn't needed in replay | The guide's slider "writes `replay_now`", but the pages read the database, which must hold the replay day up to that time |
+| 2026-10-24 | 3 | The replay data has no SPY / QQQ / IWM / VIX charts, so in replay those tiles show n/a and the market-context label is "unknown" (breadth is the only signal) | Allowed by task 3.2 ("mark any series without a fixture as n/a") |
+| 2026-10-24 | 3 | Live index tiles are fetched by the Home page itself (cached 60 s), not only read from the worker's `RegimeSnapshot` | The tiles work even when the worker isn't running |
+| 2026-10-24 | 3 | The market-context label rule: SPY vs VWAP, QQQ vs VWAP, SPY vs its 20-day average, VIX (down = +1, up 10 % or more = −1) and breadth (25 % or more = +1, under 10 % = −1); sum ≥ 2 supportive, ≤ −2 hostile, else mixed; fewer than 2 signals with data = unknown. Written in `gatekeeper/regime.py`'s docstring | Task 3.2 asks for the rule to be written down |
+| 2026-10-24 | 3 | The `regime` job runs after `orb_scan` when both are due (the schedule order changed) | Otherwise its breadth lagged one scan behind |
+| 2026-10-24 | 3 | New: `gatekeeper/yahoo.py` (live with query2→query1 fallback and a 60 s cache, plus a replay reader that shows only bars closed by the replay time), `REPLAY_WORKSPACE` setting, `app/state.py` and `app/components/page.py` (shared page setup), a Trade Lab placeholder page so "Open in Trade Lab" has somewhere to go | Needed by the pages |
+| 2026-10-24 | 3 | Streamlit 1.66: `use_container_width` is deprecated (full width is the default), so it isn't used; dataframe row selection and markdown badges (`:red-badge[...]`) are used for selection and tag chips | Avoids deprecation warnings |
 
 ---
 
@@ -562,7 +570,8 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 1 | 2026-10-24 | 1 | In replay, the news fixture's price line is a 10:52 quote (366.48, +3.31% MOVING) even when the replay clock is 10:15 | Known, accepted | A limit of the recorded fixture, not of Gatekeeper; live runs use the real time |
 | 2 | 2026-10-24 | 1 | The live smoke test ran on a Saturday: `alerts.clock()` and `entry.check("SPY")` returned models, but "closed (weekend)" and "no-data" | Open | Re-run `entry.check("SPY")` once during a US session (from 19:15 IST on a weekday; 20:15 IST from Nov 2) to see a live WAITING/TRIGGERED |
 | 3 | 2026-10-24 | 2 | In replay, ORB scans after 10:15 find only TSLA usable (1 of 1): the 234-chart wall was recorded at 10:15, and a chart counts only with every bar up to the cutoff | Known, accepted | A limit of the recording; the 10:15 scan (41 hits) is the one that matters |
-| 4 | 2026-10-24 | 2 | The live worker on a weekday session (all jobs firing against real Yahoo / SEC data) is still untested; the 10-minute live run fell on a Saturday, so only the clock ran | Open | Run `uv run python -m worker` one US session (from 18:30 IST on a weekday) with `SEC_USER_AGENT` set and a pin, then check `data\worker.log` and the heartbeats |
+| 4 | 2026-10-24 | 2 | The live worker on a weekday session (all jobs firing against real Yahoo / SEC data) is still untested; the 10-minute live run fell on a Saturday, so only the clock ran | Open | Run `uv run python -m worker` one US session (from 18:30 IST on a weekday) with `SEC_USER_AGENT` set and a pin, then check `data\worker.log` and the heartbeats; also open the dashboard during that session and check the live tiles, the Scanner and the worker dot |
+| 5 | 2026-10-24 | 3 | One full `uv run pytest` run stalled for over 10 minutes and was stopped; the next verbose run passed all 194 tests in 128 s, and the stall didn't happen again | Watching | If CI or a local run hangs again, re-run with `-v --durations=15` to see which test, and report it |
 
 ---
 
@@ -579,3 +588,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 1 | Branch pushed; CI run 40065638051 green on windows-latest and ubuntu-latest. Added `scripts/validate.py` (PASS / FAIL per check for phases 0 and 1, `--live` for the internet checks); merged `phase-1-adapter` into `main` | validate.py --live: 11 of 11 PASS | Push `main`, then Phase 2 |
 | 2026-10-24 | 2 | SQLite store (18 tables, WAL), store functions with dedupe rules, runner timing inside the lock, worker jobs (13) on one New York schedule, live APScheduler + replay simulator, worker CLI (`--list`, `--once`, `--run-for`, `--replay`, pins), Phase 2 checks in `validate.py`, COMMANDS.md worker section | 145 pytest pass (store 11, worker 27); ruff clean; validate.py --live 16/16 PASS; replay day 07:00–16:10 with no errors (TSLA triggered 10:15 at 364.18); live worker 10 min, clean stop | Push `phase-2-worker` so CI runs, then Phase 3 |
 | 2026-10-24 | 2 | Branch pushed; CI run 40074262315 green on windows-latest and ubuntu-latest (lint, 315 upstream tests, 145 Gatekeeper tests). Merged `phase-2-worker` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 3 |
+| 2026-10-24 | 3 | Chart reader (`yahoo.py`), market context (`regime.py`) and the real `regime` job; dashboard replay that drives the simulator from the time slider; Home (tiles, context label, breadth, budget, what changed, worker health), Scanner (daily / ORB tabs, filters, pin, open in Trade Lab, run scan now), Watchlist & News (pins, moves, entry status, earnings date, news stream); shared sidebar, clock bar and footer; Phase 3 checks in `validate.py`; COMMANDS.md dashboard section | 194 pytest pass (regime 25, yahoo 9, tables 5, UI smoke 10); ruff clean; validate.py --phase 3 --live 4/4 PASS (41 hits + TSLA, 3 headlines, server health, live tiles) | Push `phase-3-screens` so CI runs, then Phase 4 |

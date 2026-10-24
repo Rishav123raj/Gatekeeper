@@ -40,8 +40,9 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
-    # Replay mode: the recorded day shipped with the skills' test fixtures.
+    # Replay mode: the recorded day shipped with the skills' test fixtures, run in its own folder.
     replay_date: str = "2026-10-19"
+    replay_workspace: Path = Path("replay/workspace")
 
     # Go / No-Go gate thresholds (gate_* fields) are added in Phase 5.
 

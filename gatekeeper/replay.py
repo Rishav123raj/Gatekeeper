@@ -88,9 +88,10 @@ class ReplayContext:
 
 
 def default_paths() -> tuple[Path, Path]:
-    from gatekeeper.settings import ROOT, get_settings
+    from gatekeeper.settings import get_settings
 
-    return ROOT / "replay" / "workspace", get_settings().skills_path
+    s = get_settings()
+    return s.resolve(s.replay_workspace), s.skills_path
 
 
 def prepare_workspace(

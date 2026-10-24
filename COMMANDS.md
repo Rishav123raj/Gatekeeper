@@ -68,6 +68,26 @@ git submodule update --init
 
 The dashboard opens at **http://127.0.0.1:8501**. It is bound to your own PC only.
 
+### The dashboard (Phase 3)
+
+| Page | What it shows |
+| --- | --- |
+| **Home** (Market Overview) | SPY / QQQ / IWM / VIX tiles with sparklines, the market-context label and its reasons, breakout breadth (gauge and line), today's risk budget, what changed (breakouts, important news, alerts), worker health. Refreshes every 30 s live |
+| **Scanner** | Today's pre-market and opening-range scans: hits with range, % over, breakout time (NY and IST), news and earnings badges. Select rows to **Pin** them or **Open in Trade Lab**; **Run scan now** runs the scan job once |
+| **Watchlist & News** | Pinned tickers with last price, % vs yesterday, MOVING, entry status, next earnings date (set by hand); the news stream with tag chips, `!` 8-K badges and links, filterable by ticker, tag and importance |
+| **Trade Lab** | Arrives in Phase 4 |
+
+**LIVE / REPLAY** is a switch in the sidebar. In REPLAY a time slider (07:00 to 16:10
+New York) plays back the recorded day, Mon 2026-10-19, with no internet: moving the
+slider forward simulates only the new minutes, and moving it back rebuilds the day
+from 07:00 (about 30 seconds). In replay the dashboard does the worker's job itself, so
+the worker doesn't need to run. The recording has no index or VIX charts, so those
+tiles show n/a in replay. To start in replay, set `GATEKEEPER_MODE=replay` in `.env`.
+
+In LIVE the tiles come straight from Yahoo (cached a minute), and everything else
+comes from the worker: start it in a second window (`scripts\dev.ps1` starts both).
+The sidebar's worker dot is green when a job ran in the last 3 minutes.
+
 ### The background worker (Phase 2)
 
 The worker runs the skills on a New York schedule and saves the results in
@@ -96,7 +116,7 @@ The jobs and when they run (New York time; IST is 9:30 hours ahead until Nov 1, 
 | `analyst_watchlist` | Mon–Fri 07:00 | Earnings for `CORE_TICKERS` (needs `SEC_USER_AGENT`) |
 | `daily_scan` | Mon–Fri 08:30 | Pre-market scan of the whole universe (~2.5 min) |
 | `premarket_news` | Mon–Fri 08:45 | News and 8-Ks for core + pinned + scan hits |
-| `regime` | every 5 min, session | Market context (arrives in Phase 3; skips until then) |
+| `regime` | every 5 min, session | Market context: SPY / QQQ / IWM vs VWAP and the 20-day average, VIX, breakout breadth, and a supportive / mixed / hostile label (the rule is in `gatekeeper/regime.py`) |
 | `orb_scan` | 09:50, 10:00, then every 15 min to the 15:30 cutoff | Opening-range breakouts for core + pinned tickers |
 | `intraday_news` | every 15 min, session | New news only |
 | `entry_watch` | every minute, 09:45 to 15:30 | Pinned tickers, until each triggers or expires |
@@ -109,7 +129,7 @@ Weekends, NYSE holidays and early closes are handled: a job outside its window
 records "skipped" with the reason. Switch jobs off with
 `DISABLED_JOBS=pelosi,analyst_watchlist` in `.env`.
 
-The entry watch follows *pinned* tickers (the dashboard pins them from Phase 3):
+The entry watch follows *pinned* tickers. Pin them on the Scanner or the Watchlist page, or here:
 
 | What | Command |
 | --- | --- |
@@ -160,7 +180,9 @@ One command checks everything a phase delivered and prints a PASS / FAIL line pe
 
 | What | Command |
 | --- | --- |
-| **Validate Phase 2** (offline) | `uv run python scripts/validate.py --phase 2` |
+| **Validate Phase 3** (offline) | `uv run python scripts/validate.py --phase 3` |
+| Validate Phase 3, including the live Home check | `uv run python scripts/validate.py --phase 3 --live` |
+| Validate Phase 2 (offline) | `uv run python scripts/validate.py --phase 2` |
 | Validate Phase 2, including the live check | `uv run python scripts/validate.py --phase 2 --live` |
 | Validate Phase 1 (offline) | `uv run python scripts/validate.py --phase 1` |
 | Validate Phase 1, including the live checks (internet) | `uv run python scripts/validate.py --phase 1 --live` |
@@ -182,6 +204,15 @@ Phase 1's checks:
 It exits 0 when every check passed. During a US session (from 19:15 IST on
 weekdays, 20:15 IST from Nov 2), `--live` shows SPY's real status, for example
 `waiting` or `triggered`. On weekends and at night it shows `closed` / `no-data`.
+
+Phase 3's checks:
+
+| Check | What it proves |
+| --- | --- |
+| market context, chart reader, formatting | The label rule at every threshold; VWAP, opening range and 20-day numbers; the recorded charts show only bars closed by the replay time; live fetching falls back from query2 to query1, caches, and treats failures as n/a; NY / IST times in tables |
+| pages in replay at 10:15 | Every page loads with the clock bar and footer; the Scanner shows 41 ORB hits with TSLA 354.47 – 362.18, broke out 10:15 NY · 19:45 IST; News shows the three morning headlines with their tags; pinning works; the replay slider moves forward or rebuilds |
+| dashboard server starts | `streamlit run app/Home.py` answers its health check and serves the app |
+| live: Home with real index tiles (`--live`) | SPY, QQQ, IWM and VIX tiles show real prices from Yahoo |
 
 Phase 2's checks:
 
@@ -294,7 +325,7 @@ Every wrapper returns `(model, run_result)`. `run_result.status` is `ok`, `empty
 sizing refused), `partial` or `error` (with the reason in `run_result.message`).
 Leave out `replay=ctx` to run live.
 
-> From Phase 3, set `GATEKEEPER_MODE=replay` in `.env` and use the dashboard's time slider instead.
+> Or open the dashboard, switch the sidebar to **REPLAY** and move the time slider (Section 2).
 
 ---
 

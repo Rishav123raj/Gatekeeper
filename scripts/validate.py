@@ -66,8 +66,9 @@ def check_contracts_unchanged():
     with tempfile.TemporaryDirectory() as tmp:
         fresh = generate(Path(tmp), get_settings().skills_path)
     committed = ROOT / "tests" / "contracts"
-    changed = [n for n, d in fresh.items()
-               if json.loads((committed / f"{n}.json").read_text(encoding="utf-8")) != d]
+    changed = [
+        n for n, d in fresh.items() if json.loads((committed / f"{n}.json").read_text(encoding="utf-8")) != d
+    ]
     if changed:
         return False, "changed: " + ", ".join(changed)
     return True, f"{len(fresh)} contracts identical to tests/contracts/"
@@ -106,8 +107,11 @@ def check_replay_trade():
         "risk": ("ok", "PASS"),
     }
     bad = [f"{k}: {got[k]} != {want[k]}" for k in want if got[k] != want[k]]
-    return (False, "; ".join(bad)) if bad else (
-        True, "41 hits · 364.18 · 358.32/370.04 · 29.4/25.5/45.1 % · 8 sh $46.88 · PASS")
+    return (
+        (False, "; ".join(bad))
+        if bad
+        else (True, "41 hits · 364.18 · 358.32/370.04 · 29.4/25.5/45.1 % · 8 sh $46.88 · PASS")
+    )
 
 
 def check_calendar():
@@ -118,8 +122,10 @@ def check_calendar():
     thanks = market_day(date(2026, 11, 26))
     early = market_day(date(2026, 11, 27))
     ok = (
-        thanks is not None and session_phase(datetime(2026, 11, 26, 10, 15), day=thanks) == "closed"
-        and early is not None and session_phase(datetime(2026, 11, 27, 12, 45), day=early) == "late"
+        thanks is not None
+        and session_phase(datetime(2026, 11, 26, 10, 15), day=thanks) == "closed"
+        and early is not None
+        and session_phase(datetime(2026, 11, 27, 12, 45), day=early) == "late"
     )
     return ok, "Thanksgiving closed; Nov 27 early close cuts entries at 12:30"
 
@@ -147,8 +153,19 @@ def check_worker_replay():
 
     with tempfile.TemporaryDirectory() as tmp:
         db = f"sqlite:///{(Path(tmp) / 'v.db').as_posix()}"
-        ok, last = sh(sys.executable, "-m", "worker", "--replay", "--from", "10:10", "--to", "10:16",
-                      "--db", db, "--quiet")
+        ok, last = sh(
+            sys.executable,
+            "-m",
+            "worker",
+            "--replay",
+            "--from",
+            "10:10",
+            "--to",
+            "10:16",
+            "--db",
+            db,
+            "--quiet",
+        )
         if not ok:
             return False, last
         engine = init_db(make_engine(db))
@@ -192,6 +209,65 @@ def check_worker_live_once():
     return hb.last_status == "ok", f"clock job: {hb.last_status}, {hb.last_detail}"
 
 
+# --- Phase 3 ---------------------------------------------------------------------------------
+
+
+def check_server():
+    """Starts the dashboard on a spare port and asks it for its health and its pages."""
+    import httpx
+
+    port = 8599
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "streamlit", "run", "app/Home.py", "--server.port", str(port)],
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        for _ in range(60):
+            try:
+                if httpx.get(f"http://127.0.0.1:{port}/_stcore/health", timeout=1).text == "ok":
+                    break
+            except httpx.HTTPError:
+                time.sleep(0.5)
+        else:
+            return False, "the server did not answer within 30 s"
+        pages = httpx.get(f"http://127.0.0.1:{port}/", timeout=5).status_code
+        return pages == 200, f"health ok, http://127.0.0.1:{port}/ answered {pages}"
+    finally:
+        proc.terminate()
+        proc.wait(10)
+
+
+def check_live_home():
+    """The Home page in live mode with real index tiles (a throwaway database)."""
+    import os
+
+    from streamlit.testing.v1 import AppTest
+
+    from gatekeeper.db import get_engine
+    from gatekeeper.settings import get_settings
+
+    with tempfile.TemporaryDirectory() as tmp:
+        old = {k: os.environ.get(k) for k in ("GATEKEEPER_MODE", "DB_URL")}
+        os.environ.update(GATEKEEPER_MODE="live", DB_URL=f"sqlite:///{(Path(tmp) / 'h.db').as_posix()}")
+        get_settings.cache_clear()
+        get_engine.cache_clear()
+        try:
+            at = AppTest.from_file(str(ROOT / "app" / "Home.py"), default_timeout=120).run()
+            tiles = {m.label: m.value for m in at.metric}
+        finally:
+            get_engine().dispose()
+            for k, v in old.items():
+                os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+            get_settings.cache_clear()
+            get_engine.cache_clear()
+    if at.exception:
+        return False, str(at.exception[0].value)
+    real = {k: v for k, v in tiles.items() if v != "n/a"}
+    return len(real) == 4, " · ".join(f"{k} {v}" for k, v in tiles.items())
+
+
 PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
     # (name, check, needs internet)
     0: [
@@ -216,6 +292,16 @@ PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
         ("worker replay 10:10 to 10:16", check_worker_replay, False),
         ("live: worker --once clock", check_worker_live_once, True),
     ],
+    3: [
+        (
+            "market context, chart reader, formatting",
+            pytest("tests/test_regime.py", "tests/test_yahoo.py", "tests/test_ui_tables.py"),
+            False,
+        ),
+        ("pages in replay at 10:15 (41 hits, headlines)", pytest("tests/test_ui_smoke.py"), False),
+        ("dashboard server starts", check_server, False),
+        ("live: Home with real index tiles", check_live_home, True),
+    ],
 }
 
 
@@ -231,7 +317,7 @@ def main() -> int:
         print(f"\nPhase {ph}")
         for name, fn, live in PHASES[ph]:
             if live and not a.live:
-                print(f"  SKIP  {name:40} (add --live)")
+                print(f"  SKIP  {name:46} (add --live)")
                 continue
             t0 = time.perf_counter()
             try:
@@ -239,7 +325,7 @@ def main() -> int:
             except Exception as e:  # a check that crashes is a failed check
                 ok, detail = False, f"{type(e).__name__}: {e}"
             failed += not ok
-            print(f"  {'PASS' if ok else 'FAIL'}  {name:40} {time.perf_counter() - t0:5.1f}s  {detail}")
+            print(f"  {'PASS' if ok else 'FAIL'}  {name:46} {time.perf_counter() - t0:5.1f}s  {detail}")
     print(f"\n{'All checks passed.' if not failed else f'{failed} check(s) failed.'}")
     return 1 if failed else 0
 
