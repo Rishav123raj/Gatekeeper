@@ -43,7 +43,7 @@ Claude will then:
 | 2 | Storage & background worker | M2 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40074262315 green on Windows + Ubuntu |
 | 3 | Market Overview, Scanner, News | M3 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40108052325 green on Windows + Ubuntu (after the Windows pin-order fix, Issue 6) |
 | 4 | Trade Lab | M4 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40115151903 green on Windows + Ubuntu |
-| 5 | Go / No-Go engine | M5 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
+| 5 | Go / No-Go engine | M5 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40118467980 green on Windows + Ubuntu |
 | 6 | Risk, Size, Positions, Alerts | M6 | ⬜ | | | |
 | 7 | Journal & Research | M7 | ⬜ | | | |
 | P | Paper-trading period (4 to 8 weeks) | — | ⬜ | | | Usage, not code |
@@ -625,3 +625,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 4 | Trade Lab charts (candles with levels, odds bar, fan, histogram), `gatekeeper/lab.py` (preview, compare, plan-file hash), the Trade Lab page (symbol picker, live chart, entry, exit with preview, Time Machine, compare, external-plan banner, Go / No-Go placeholder); fixed the chart window to use the bars' date (found live); Phase 4 checks in `validate.py`; COMMANDS.md Trade Lab notes | 216 pytest pass (charts 5, lab 9, Trade Lab page 7); ruff clean; validate.py --phase 4 --live 3/3 PASS | Push `phase-4-trade-lab` so CI runs, then Phase 5 |
 | 2026-10-24 | 4 | CI run 40115151903 green on windows-latest (1 min 42 s) and ubuntu-latest (52 s); both jobs concluded success (the API didn't list per-step results for this run). Merged `phase-4-trade-lab` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 5 |
 | 2026-10-24 | 5 | Go / No-Go engine (`gatekeeper/readiness.py`: 9 day + 9 trade gates, pure, thresholds in `GATE_*` settings, context builders), store (readiness with repeat-skipping, decisions), DB column upgrades for older databases, the panel / ticket / decision form (`app/components/gates.py`), Home day panel, Trade Lab Size & check + trade panel; Phase 5 checks in `validate.py`; COMMANDS.md Go / No-Go section; `.env.example` thresholds | 307 pytest pass (readiness 80, scenarios 5, Trade Lab UI 11, wording 2); ruff clean; validate.py --phase 5 --live 5/5 PASS (all four scenarios; DB upgrade on a copy of the real database) | Push `phase-5-go-no-go` so CI runs, then Phase 6 |
+| 2026-10-24 | 5 | CI run 40118467980 green on windows-latest (2 min 9 s) and ubuntu-latest (1 min 15 s). Merged `phase-5-go-no-go` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 6 |
