@@ -78,8 +78,10 @@ class RunResult:
     stdout: str = ""
     stderr: str = ""
     message: str = ""
-    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    duration_s: float = 0.0
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))  # when the script started
+    duration_s: float = 0.0  # how long the script ran
+    waited_s: float = 0.0  # time spent waiting for the trader/ lock first
+    writes_state: bool = False
 
     @property
     def ok(self) -> bool:
@@ -194,35 +196,43 @@ class SkillRunner:
         cmd = self.command(tool, args, json_out)
         sent = cmd[5:]  # the arguments after the script, as actually sent
         sub = subcommand(tool, args)
-        started = datetime.now(UTC)
-        t0 = time.perf_counter()
         env = {**os.environ, **self.env, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+        # The script's own start and run time, measured inside the lock, so the run log
+        # shows when each run really held trader/ (lock waits are reported separately).
+        asked = time.perf_counter()
+        timing = {"started": datetime.now(UTC), "t0": asked}
         try:
             if writes_state:
                 self.trader_dir.mkdir(parents=True, exist_ok=True)
                 with FileLock(self.trader_dir / LOCK_NAME, timeout=self.lock_timeout):
-                    proc = self._exec(cmd, env, timeout)
+                    proc = self._exec(cmd, env, timeout, timing)
             else:
-                proc = self._exec(cmd, env, timeout)
+                proc = self._exec(cmd, env, timeout, timing)
         except subprocess.TimeoutExpired as e:
             res = RunResult(tool, sent, "error", None, stdout=_text(e.stdout), stderr=_text(e.stderr),
-                            message=f"timed out after {timeout:g} s", started_at=started)
+                            message=f"timed out after {timeout:g} s")
         except Timeout:
-            res = RunResult(tool, sent, "error", None, started_at=started,
+            timing["t0"] = time.perf_counter()
+            res = RunResult(tool, sent, "error", None,
                             message=f"another run held the trader/ lock for over {self.lock_timeout:g} s")
         else:
             data = parse_json(proc.stdout) if json_out else None
             status = classify(tool, sub, proc.returncode, data, json_out, proc.stderr)
             message = error_message(proc.stderr, proc.stdout) if status == "error" else ""
-            res = RunResult(tool, sent, status, proc.returncode, data, proc.stdout, proc.stderr,
-                            message, started)
-        res.duration_s = round(time.perf_counter() - t0, 3)
+            res = RunResult(tool, sent, status, proc.returncode, data, proc.stdout, proc.stderr, message)
+        res.started_at = timing["started"]
+        res.duration_s = round(time.perf_counter() - timing["t0"], 3)
+        res.waited_s = round(timing["t0"] - asked, 3)
+        res.writes_state = writes_state
         if self.on_result is not None:
             self.on_result(res)
         return res
 
-    def _exec(self, cmd: list[str], env: dict[str, str], timeout: float) -> subprocess.CompletedProcess[str]:
+    def _exec(
+        self, cmd: list[str], env: dict[str, str], timeout: float, timing: dict[str, Any]
+    ) -> subprocess.CompletedProcess[str]:
         self.cwd.mkdir(parents=True, exist_ok=True)
+        timing["started"], timing["t0"] = datetime.now(UTC), time.perf_counter()
         return subprocess.run(cmd, cwd=self.cwd, env=env, capture_output=True, text=True,
                               encoding="utf-8", errors="replace", timeout=timeout, stdin=subprocess.DEVNULL)
 

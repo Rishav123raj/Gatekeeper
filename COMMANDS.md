@@ -68,7 +68,54 @@ git submodule update --init
 
 The dashboard opens at **http://127.0.0.1:8501**. It is bound to your own PC only.
 
-> In Phase 0 the worker is a placeholder: it prints the New York / IST clock and the session phase once a minute.
+### The background worker (Phase 2)
+
+The worker runs the skills on a New York schedule and saves the results in
+`data\gatekeeper.db`. It logs to the console and to `data\worker.log`. It never
+places, cancels or changes an order.
+
+| What | Command |
+| --- | --- |
+| **Run the worker** (until Ctrl+C) | `uv run python -m worker` |
+| See every job and its next run (NY and IST) | `uv run python -m worker --list` |
+| Run one job now | `uv run python -m worker --once orb_scan` (any job name from `--list`) |
+| Run for a fixed time, then stop cleanly | `uv run python -m worker --run-for 600` |
+| Log to the file only (quiet console) | `uv run python -m worker --quiet` |
+| **Fast-forward the recorded day** (no internet) | `uv run python -m worker --replay --from 09:30 --to 10:30` |
+| The same, watchable (10 simulated minutes a second) | `uv run python -m worker --replay --from 09:30 --to 10:30 --speed 600` |
+| The whole recorded day | `uv run python -m worker --replay --from 07:00 --to 16:10` |
+| Replay into a throwaway database | `uv run python -m worker --replay --db sqlite:///data/replay-test.db` |
+| Follow the log | `Get-Content data\worker.log -Wait -Tail 20` |
+
+The jobs and when they run (New York time; IST is 9:30 hours ahead until Nov 1, 10:30 after):
+
+| Job | When (NY) | What it does |
+| --- | --- | --- |
+| `clock` | every minute | NYSE clock and session phase: the worker's pulse |
+| `universe` | Sun 18:00 | Rebuilds the list of ~5,900 US stocks |
+| `analyst_watchlist` | Mon–Fri 07:00 | Earnings for `CORE_TICKERS` (needs `SEC_USER_AGENT`) |
+| `daily_scan` | Mon–Fri 08:30 | Pre-market scan of the whole universe (~2.5 min) |
+| `premarket_news` | Mon–Fri 08:45 | News and 8-Ks for core + pinned + scan hits |
+| `regime` | every 5 min, session | Market context (arrives in Phase 3; skips until then) |
+| `orb_scan` | 09:50, 10:00, then every 15 min to the 15:30 cutoff | Opening-range breakouts for core + pinned tickers |
+| `intraday_news` | every 15 min, session | New news only |
+| `entry_watch` | every minute, 09:45 to 15:30 | Pinned tickers, until each triggers or expires |
+| `quotes` | every 5 min, session | Fresh prices, only while a plan for today or a position exists |
+| `alerts_check` | every 2 min, session | Rings your alert rules (stop, target, flat-by) |
+| `pelosi` | Mon–Fri, hourly 08:00–20:00 | New Congress trade filings |
+| `eod_journal` | Mon–Fri 16:10 | End-of-day journal (arrives in Phase 7; skips until then) |
+
+Weekends, NYSE holidays and early closes are handled: a job outside its window
+records "skipped" with the reason. Switch jobs off with
+`DISABLED_JOBS=pelosi,analyst_watchlist` in `.env`.
+
+The entry watch follows *pinned* tickers (the dashboard pins them from Phase 3):
+
+| What | Command |
+| --- | --- |
+| Pin tickers for the entry watch | `uv run python -m worker --add-pin TSLA,NVDA` |
+| Unpin | `uv run python -m worker --remove-pin NVDA` |
+| List the pins | `uv run python -m worker --pins` |
 
 ---
 
@@ -113,7 +160,9 @@ One command checks everything a phase delivered and prints a PASS / FAIL line pe
 
 | What | Command |
 | --- | --- |
-| **Validate Phase 1** (offline) | `uv run python scripts/validate.py --phase 1` |
+| **Validate Phase 2** (offline) | `uv run python scripts/validate.py --phase 2` |
+| Validate Phase 2, including the live check | `uv run python scripts/validate.py --phase 2 --live` |
+| Validate Phase 1 (offline) | `uv run python scripts/validate.py --phase 1` |
 | Validate Phase 1, including the live checks (internet) | `uv run python scripts/validate.py --phase 1 --live` |
 | Validate Phase 0 | `uv run python scripts/validate.py --phase 0` |
 | Validate every phase built so far | `uv run python scripts/validate.py --live` |
@@ -133,6 +182,16 @@ Phase 1's checks:
 It exits 0 when every check passed. During a US session (from 19:15 IST on
 weekdays, 20:15 IST from Nov 2), `--live` shows SPY's real status, for example
 `waiting` or `triggered`. On weekends and at night it shows `closed` / `no-data`.
+
+Phase 2's checks:
+
+| Check | What it proves |
+| --- | --- |
+| store tests | Results become rows; news isn't stored twice; an entry is stored only when its status changes; pins, heartbeats, WAL, concurrent writers |
+| worker tests | A whole replay day (07:00 to 16:10) with no errors: daily + 23 ORB scans, TSLA waiting at 9:45 then triggered at 10:15, earnings, Congress filings, heartbeats, no overlapping `trader/` writes, the flat-by alert at 15:56; Thanksgiving and weekends skip; the Nov 27 early close cuts the jobs |
+| schedule | 13 jobs; the ORB scan fires 25 times a day from 09:50 NY |
+| worker replay 10:10 to 10:16 | The CLI fast-forward: TSLA triggered at 364.18 at 10:15, 41 ORB hits |
+| live: worker --once clock (`--live`) | The live clock job runs and records its heartbeat |
 
 ### Skill contracts and the recorded numbers (Phase 1)
 
@@ -316,8 +375,6 @@ These commands will work once their phase is built. This file is updated at the 
 
 | Phase | Command | What it does |
 | --- | --- | --- |
-| 2 | `uv run python -m worker` | The real scheduler (scans, news, entries, alerts on a New York schedule) |
-| 2 | `uv run python -m worker --replay --from 09:30 --to 10:30 --speed 600` | Fast-forwards a recorded day through the worker |
 | 3 | `GATEKEEPER_MODE=replay` in `.env` | Dashboard in replay mode, with a time slider |
 | 6 | `uv sync --extra notify` | Windows toast notifications |
 | 8 | `uv sync --extra broker` | Alpaca **paper** trading support (optional phase) |

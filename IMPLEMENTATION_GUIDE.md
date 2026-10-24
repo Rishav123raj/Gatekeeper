@@ -40,7 +40,7 @@ Claude will then:
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 | Foundation | M0 | ✅ | 2026-10-24 | 2026-10-24 | CI green on Windows + Ubuntu |
 | 1 | Skill adapter & contracts | M1 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40065638051 green on Windows + Ubuntu |
-| 2 | Storage & background worker | M2 | ⬜ | | | |
+| 2 | Storage & background worker | M2 | 🟨 | 2026-10-24 | | Built locally; CI pending a push |
 | 3 | Market Overview, Scanner, News | M3 | ⬜ | | | |
 | 4 | Trade Lab | M4 | ⬜ | | | |
 | 5 | Go / No-Go engine | M5 | ⬜ | | | |
@@ -245,34 +245,35 @@ uv run python scripts/validate.py --phase 1 --live   # every Phase 1 check, PASS
 **Goal:** jobs run on a New York schedule, store results in SQLite, and never write `trader/` at the same time.
 
 ### Tasks
-- [ ] **2.1 `gatekeeper/db.py`**: SQLModel engine from `db_url`, `init_db()`, `session()` context manager; WAL mode (`PRAGMA journal_mode=WAL`) so the UI can read while the worker writes.
-- [ ] **2.2 Tables** (plan Section 8): `SkillRun`, `ScanRun`, `ScanHit`, `NewsItem`, `EarningsSnapshot`, `RegimeSnapshot`, `EntrySignal`, `Plan`, `TmResult`, `RiskVerdict`, `Readiness`, `Decision`, `TradeJournal`, `AlertFired`, `PelosiFiling`, plus `PinnedTicker` and `JobHeartbeat`. Each result table has a `mode` column (live/replay) and a `payload` JSON column.
-- [ ] **2.3** The runner writes a `SkillRun` row for every call.
-- [ ] **2.4 `gatekeeper/store.py`**: functions that turn models into rows: `save_scan(result)`, `save_news(result)` (dedupe on URL), `save_entry(status)` (insert only when the status changes), `save_plan`, `save_tm`, `save_risk`, `save_alert_fired`, `save_pelosi`.
-- [ ] **2.5 `worker/jobs.py`**: one function per job in plan Section 7: `job_universe`, `job_analyst_watchlist`, `job_daily_scan`, `job_premarket_news`, `job_regime` (stub until Phase 3), `job_orb_scan`, `job_intraday_news`, `job_entry_watch`, `job_alerts_check`, `job_quotes`, `job_pelosi`, `job_eod_journal` (stub until Phase 7). Each:
+- [x] **2.1 `gatekeeper/db.py`**: SQLModel engine from `db_url`, `init_db()`, `session()` context manager; WAL mode (`PRAGMA journal_mode=WAL`) so the UI can read while the worker writes.
+- [x] **2.2 Tables** (plan Section 8): `SkillRun`, `ScanRun`, `ScanHit`, `NewsItem`, `EarningsSnapshot`, `RegimeSnapshot`, `EntrySignal`, `Plan`, `TmResult`, `RiskVerdict`, `Readiness`, `Decision`, `TradeJournal`, `AlertFired`, `PelosiFiling`, plus `PinnedTicker` and `JobHeartbeat`. Each result table has a `mode` column (live/replay) and a `payload` JSON column.
+- [x] **2.3** The runner writes a `SkillRun` row for every call.
+- [x] **2.4 `gatekeeper/store.py`**: functions that turn models into rows: `save_scan(result)`, `save_news(result)` (dedupe on URL), `save_entry(status)` (insert only when the status changes), `save_plan`, `save_tm`, `save_risk`, `save_alert_fired`, `save_pelosi`.
+- [x] **2.5 `worker/jobs.py`**: one function per job in plan Section 7: `job_universe`, `job_analyst_watchlist`, `job_daily_scan`, `job_premarket_news`, `job_regime` (stub until Phase 3), `job_orb_scan`, `job_intraday_news`, `job_entry_watch`, `job_alerts_check`, `job_quotes`, `job_pelosi`, `job_eod_journal` (stub until Phase 7). Each:
   1. checks `session_phase()` and returns early when it doesn't apply;
   2. calls the wrapper;
   3. saves the result;
   4. updates `JobHeartbeat(job, last_ok, last_error)`.
-- [ ] **2.6 `worker/__main__.py`**: `BackgroundScheduler(timezone="America/New_York", job_defaults={"coalesce": True, "max_instances": 1, "misfire_grace_time": 120})`, cron triggers per the plan, graceful Ctrl+C shutdown, a log to `data/worker.log`.
-- [ ] **2.7 Simulated clock for replay**: `worker --replay --from 08:00 --to 16:10 --speed 60` steps a fake clock and fires the due jobs in order (no real waiting). This is used for tests and demos.
-- [ ] **2.8** Job toggles from settings (for example `FULL_UNIVERSE_ORB=false` skips the universe-wide ORB scan).
+- [x] **2.6 `worker/__main__.py`**: `BackgroundScheduler(timezone="America/New_York", job_defaults={"coalesce": True, "max_instances": 1, "misfire_grace_time": 120})`, cron triggers per the plan, graceful Ctrl+C shutdown, a log to `data/worker.log`.
+- [x] **2.7 Simulated clock for replay**: `worker --replay --from 08:00 --to 16:10 --speed 60` steps a fake clock and fires the due jobs in order (no real waiting). This is used for tests and demos.
+- [x] **2.8** Job toggles from settings (for example `FULL_UNIVERSE_ORB=false` skips the universe-wide ORB scan).
 
 ### Tests
-- [ ] **2.9** `tests/test_worker_replay.py`: a replay day from 08:00 to 16:10 → `ScanRun` rows for daily and ORB, `NewsItem` rows for TSLA, `EntrySignal` TSLA flips to TRIGGERED at 10:15, heartbeats for every job, no exceptions.
-- [ ] **2.10** `tests/test_store.py`: news dedupe; entry status changes only.
-- [ ] **2.11** Weekend and holiday guard: jobs skip on 2026-11-26 (Thanksgiving); the 2026-11-27 early close cuts the jobs at 13:00.
+- [x] **2.9** `tests/test_worker_replay.py`: a replay day from 08:00 to 16:10 → `ScanRun` rows for daily and ORB, `NewsItem` rows for TSLA, `EntrySignal` TSLA flips to TRIGGERED at 10:15, heartbeats for every job, no exceptions.
+- [x] **2.10** `tests/test_store.py`: news dedupe; entry status changes only.
+- [x] **2.11** Weekend and holiday guard: jobs skip on 2026-11-26 (Thanksgiving); the 2026-11-27 early close cuts the jobs at 13:00.
 
 ### Verify
 ```powershell
 uv run pytest tests/test_worker_replay.py tests/test_store.py -v
 uv run python -m worker --replay --from 09:30 --to 10:30 --speed 600
+uv run python scripts/validate.py --phase 2 --live   # every Phase 2 check, PASS / FAIL
 ```
 
 ### Exit criteria
-- [ ] A replay day fills every table that should be filled
-- [ ] No two state-writing runs overlap (checked from `SkillRun` timestamps)
-- [ ] The live worker starts, runs `alerts.clock` every minute for 10 minutes, and stops cleanly
+- [x] A replay day fills every table that should be filled (the worker fills: SkillRun, JobHeartbeat, ScanRun/ScanHit, NewsItem, PriceMove, EarningsSnapshot, EntrySignal, AlertFired, PelosiFiling, PinnedTicker. Regime is Phase 3; Plan, TmResult, RiskVerdict come from the Trade Lab, Phases 4–5; Readiness and Decision Phase 5; TradeJournal Phase 7)
+- [x] No two state-writing runs overlap (checked from `SkillRun` timestamps, sequential replay day and 4 concurrent threads)
+- [x] The live worker starts, runs `alerts.clock` every minute for 10 minutes, and stops cleanly (`--run-for 600` on 2026-10-24: 10 clock runs on the minute, 01:38 to 01:47 NY, "worker stopped cleanly", exit 0; a Saturday, so the other jobs had nothing to do, see Issue 4)
 
 ---
 
@@ -541,6 +542,16 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-24 | 1 | Replay: `entry.py` reads a `charts/` folder in the workspace (TSLA only); pelosi gets `--year 2026 --today <replay date>`; news gets `--now` as ISO with offset; explicit `--now`/`--offline` from a caller always win | Matches how the skills' own tests call each tool |
 | 2026-10-24 | 1 | Golden-number note, no change: "42 of 231 usable" is for `--min-price 0`; with the default $5 floor it is 41 hits of 222 usable | Both reproduced exactly |
 | 2026-10-24 | 1 | `session_phase` takes the day's `alerts.py clock` status: holidays are closed, and an early close moves the close and the entry cutoff up together (13:00 close → 12:30 cutoff). `market_day()` caches per date and doesn't cache a failed lookup. The clock bar shows early closes and holidays | Task 1.19 |
+| 2026-10-24 | 2 | Tables live in `gatekeeper/tables.py` (db.py has only the engine and session). Added a `PriceMove` table (each news check's price line, for the MOVING flag in Phase 3). The scan type is `ScanRun.scan_mode` (daily/orb), so `mode` always means live/replay | Keeps `mode` consistent on every table; the watchlist page needs the price moves |
+| 2026-10-24 | 2 | Times are stored as time-zone-aware UTC | SQLModel 0.0.48 refuses naive datetimes; aware UTC matches the "store UTC" convention |
+| 2026-10-24 | 2 | The runner now times each script **inside** the `trader/` lock (`started_at`, `duration_s`) and reports the lock wait separately (`waited_s`, `writes_state` on `SkillRun`) | Otherwise the run log can't prove that state-writing runs never overlap |
+| 2026-10-24 | 2 | `SkillRun` rows are written through the runner's `on_result` hook (`store.skill_run_logger`), which the worker attaches; the runner itself stays database-free | Keeps Phase 1's runner and tests unchanged |
+| 2026-10-24 | 2 | One schedule (`worker/jobs.py: SCHEDULE`, cron rules in New York time) feeds both the live APScheduler and the replay simulator, which asks the same cron triggers for their fire times | A replay fires exactly what a live day would |
+| 2026-10-24 | 2 | Added a `clock` job (every minute): the worker's pulse. Live it calls `alerts.py clock`; in replay it uses the cached calendar, so a simulated day doesn't spend ~500 subprocesses on a static calendar | Exit criterion 3, without slowing replays |
+| 2026-10-24 | 2 | The entry watch stops checking a ticker once it has triggered or expired that day; alerts and quotes skip when there are no rules / no plan or position for today | One trigger per setup per day (the skill's rule); saves free-API calls |
+| 2026-10-24 | 2 | Job tickers: live uses `CORE_TICKERS` + pinned (+ the latest scan's top 10 for news); replay uses the recorded data (the 234-chart wall for scans, TSLA for news, AAPL and KO for earnings). The live daily scan builds the universe first if `trader/universe.txt` is missing | Replay can only use what was recorded |
+| 2026-10-24 | 2 | New settings `DISABLED_JOBS` and `WORKER_LOCK_TIMEOUT` (300 s); new worker options `--list`, `--once JOB`, `--run-for`, `--add-pin/--remove-pin/--pins`, `--db`, `--quiet`, `--keep`; `scripts/validate.py` gained Phase 2 checks | Task 2.8 and day-to-day use |
+| 2026-10-24 | 2 | The day test runs 07:00 to 16:10 (not 08:00) so the 07:00 earnings job is included; it expects 23 ORB scans (25 fire times; 15:30 and 15:45 are after the entry cutoff) | Covers every worker-filled table |
 
 ---
 
@@ -550,6 +561,8 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 2026-10-24 | 1 | In replay, the news fixture's price line is a 10:52 quote (366.48, +3.31% MOVING) even when the replay clock is 10:15 | Known, accepted | A limit of the recorded fixture, not of Gatekeeper; live runs use the real time |
 | 2 | 2026-10-24 | 1 | The live smoke test ran on a Saturday: `alerts.clock()` and `entry.check("SPY")` returned models, but "closed (weekend)" and "no-data" | Open | Re-run `entry.check("SPY")` once during a US session (from 19:15 IST on a weekday; 20:15 IST from Nov 2) to see a live WAITING/TRIGGERED |
+| 3 | 2026-10-24 | 2 | In replay, ORB scans after 10:15 find only TSLA usable (1 of 1): the 234-chart wall was recorded at 10:15, and a chart counts only with every bar up to the cutoff | Known, accepted | A limit of the recording; the 10:15 scan (41 hits) is the one that matters |
+| 4 | 2026-10-24 | 2 | The live worker on a weekday session (all jobs firing against real Yahoo / SEC data) is still untested; the 10-minute live run fell on a Saturday, so only the clock ran | Open | Run `uv run python -m worker` one US session (from 18:30 IST on a weekday) with `SEC_USER_AGENT` set and a pin, then check `data\worker.log` and the heartbeats |
 
 ---
 
@@ -564,3 +577,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 0 | Branch pushed; CI run 40008407159 green on windows-latest and ubuntu-latest (install, lint, 315 upstream tests, Gatekeeper tests). Added COMMANDS.md; merged `phase-0-foundation` into `main` | CI green; replay commands in COMMANDS.md re-checked (41 ORB hits, TSLA 364.18, TM 29.4/25.5/45.1) | Push `main`, then Phase 1 |
 | 2026-10-24 | 1 | Runner (classification, lock, isolation, timeout, replay injection), replay workspace, 30+ typed models from real output, wrappers for all 11 tools, 18 contract snapshots, NYSE calendar in the session phase | 107 pytest pass (runner 28, contracts 39, golden e2e 18, clock 19, settings 3), ruff clean; every golden number reproduced; contracts byte-identical across runs; live smoke OK (weekend) | Push `phase-1-adapter` so CI runs, then Phase 2 |
 | 2026-10-24 | 1 | Branch pushed; CI run 40065638051 green on windows-latest and ubuntu-latest. Added `scripts/validate.py` (PASS / FAIL per check for phases 0 and 1, `--live` for the internet checks); merged `phase-1-adapter` into `main` | validate.py --live: 11 of 11 PASS | Push `main`, then Phase 2 |
+| 2026-10-24 | 2 | SQLite store (18 tables, WAL), store functions with dedupe rules, runner timing inside the lock, worker jobs (13) on one New York schedule, live APScheduler + replay simulator, worker CLI (`--list`, `--once`, `--run-for`, `--replay`, pins), Phase 2 checks in `validate.py`, COMMANDS.md worker section | 145 pytest pass (store 11, worker 27); ruff clean; validate.py --live 16/16 PASS; replay day 07:00–16:10 with no errors (TSLA triggered 10:15 at 364.18); live worker 10 min, clean stop | Push `phase-2-worker` so CI runs, then Phase 3 |

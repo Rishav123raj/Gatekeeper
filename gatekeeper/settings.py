@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     awake_ist: str = "18:30-23:30"
     full_universe_orb: bool = False
 
+    # Worker: jobs to switch off (e.g. DISABLED_JOBS=pelosi,analyst_watchlist), and how long a job
+    # waits for another run to finish writing trader/ (a whole-universe scan holds it ~3 minutes).
+    disabled_jobs: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    worker_lock_timeout: float = 300
+
     notify: Literal["none", "toast", "telegram"] = "none"
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
@@ -45,6 +50,13 @@ class Settings(BaseSettings):
     def _split_tickers(cls, v: object) -> object:
         if isinstance(v, str):
             return [t.strip().upper() for t in v.split(",") if t.strip()]
+        return v
+
+    @field_validator("disabled_jobs", mode="before")
+    @classmethod
+    def _split_jobs(cls, v: object) -> object:
+        if isinstance(v, str):
+            return [j.strip() for j in v.split(",") if j.strip()]
         return v
 
     @field_validator("awake_ist")

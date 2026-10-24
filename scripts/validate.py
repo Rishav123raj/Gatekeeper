@@ -135,6 +135,63 @@ def check_live_smoke():
     return True, f"{fmt_dual(now_ny())}: NYSE {'open' if c.open else 'closed'} ({c.reason}); SPY {e.status}"
 
 
+# --- Phase 2 ---------------------------------------------------------------------------------
+
+
+def check_worker_replay():
+    """The worker CLI fast-forwards 10:10 to 10:16 of the recorded day into a throwaway database."""
+    from sqlmodel import select
+
+    from gatekeeper import store, tables
+    from gatekeeper.db import init_db, make_engine, session
+
+    with tempfile.TemporaryDirectory() as tmp:
+        db = f"sqlite:///{(Path(tmp) / 'v.db').as_posix()}"
+        ok, last = sh(sys.executable, "-m", "worker", "--replay", "--from", "10:10", "--to", "10:16",
+                      "--db", db, "--quiet")
+        if not ok:
+            return False, last
+        engine = init_db(make_engine(db))
+        with session(engine) as s:
+            sig = store.latest_entry(s, "replay", "TSLA", "2026-10-19")
+            scan = store.latest_scan(s, "replay", "orb")
+            runs = len(s.exec(select(tables.SkillRun)).all())
+        engine.dispose()
+    got = (sig.status, sig.trigger_price, sig.checked_ny[11:16], scan.hits_count)
+    want = ("triggered", 364.18, "10:15", 41)
+    return got == want, f"TSLA {got[0]} at {got[1]} ({got[2]}), ORB {got[3]} hits, {runs} skill runs logged"
+
+
+def check_schedule():
+    from datetime import datetime, time
+
+    from gatekeeper.clock import NY
+    from worker.jobs import JOBS, SCHEDULE
+    from worker.scheduler import fire_times
+
+    d = datetime(2026, 10, 19).date()
+    t0, t1 = datetime.combine(d, time(0, 0), NY), datetime.combine(d, time(23, 59), NY)
+    orb = fire_times("orb_scan", t0, t1)
+    ok = set(JOBS) == set(SCHEDULE) and len(orb) == 25 and f"{orb[0]:%H:%M}" == "09:50"
+    return ok, f"{len(JOBS)} jobs; ORB 25 times a day from 09:50 NY (19:20 IST)"
+
+
+def check_worker_live_once():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = f"sqlite:///{(Path(tmp) / 'live.db').as_posix()}"
+        ok, last = sh(sys.executable, "-m", "worker", "--once", "clock", "--db", db, "--quiet")
+        if not ok:
+            return False, last
+        from gatekeeper import store
+        from gatekeeper.db import init_db, make_engine, session
+
+        engine = init_db(make_engine(db))
+        with session(engine) as s:
+            (hb,) = store.heartbeats(s, "live")
+        engine.dispose()
+    return hb.last_status == "ok", f"clock job: {hb.last_status}, {hb.last_detail}"
+
+
 PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
     # (name, check, needs internet)
     0: [
@@ -152,6 +209,13 @@ PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
         ("NYSE calendar in the clock", check_calendar, False),
         ("live smoke: clock + SPY entry", check_live_smoke, True),
     ],
+    2: [
+        ("store tests", pytest("tests/test_store.py"), False),
+        ("worker tests (replay day, guards, CLI)", pytest("tests/test_worker_replay.py"), False),
+        ("schedule", check_schedule, False),
+        ("worker replay 10:10 to 10:16", check_worker_replay, False),
+        ("live: worker --once clock", check_worker_live_once, True),
+    ],
 }
 
 
@@ -167,7 +231,7 @@ def main() -> int:
         print(f"\nPhase {ph}")
         for name, fn, live in PHASES[ph]:
             if live and not a.live:
-                print(f"  SKIP  {name:34} (add --live)")
+                print(f"  SKIP  {name:40} (add --live)")
                 continue
             t0 = time.perf_counter()
             try:
@@ -175,7 +239,7 @@ def main() -> int:
             except Exception as e:  # a check that crashes is a failed check
                 ok, detail = False, f"{type(e).__name__}: {e}"
             failed += not ok
-            print(f"  {'PASS' if ok else 'FAIL'}  {name:34} {time.perf_counter() - t0:5.1f}s  {detail}")
+            print(f"  {'PASS' if ok else 'FAIL'}  {name:40} {time.perf_counter() - t0:5.1f}s  {detail}")
     print(f"\n{'All checks passed.' if not failed else f'{failed} check(s) failed.'}")
     return 1 if failed else 0
 
