@@ -107,6 +107,33 @@ cd ..\..
 
 **Before every commit:** `uv run ruff check . ; uv run pytest`
 
+### Validate a phase (PASS / FAIL per check)
+
+One command checks everything a phase delivered and prints a PASS / FAIL line per check:
+
+| What | Command |
+| --- | --- |
+| **Validate Phase 1** (offline) | `uv run python scripts/validate.py --phase 1` |
+| Validate Phase 1, including the live checks (internet) | `uv run python scripts/validate.py --phase 1 --live` |
+| Validate Phase 0 | `uv run python scripts/validate.py --phase 0` |
+| Validate every phase built so far | `uv run python scripts/validate.py --live` |
+
+Phase 1's checks:
+
+| Check | What it proves |
+| --- | --- |
+| runner tests | Exit codes, errors, timeouts, the `trader/` lock, isolated mode, replay injection |
+| contract tests | All 18 saved skill outputs parse into the models, and a fresh run has the same structure |
+| golden-number e2e tests | The documented TSLA trade, every number |
+| contracts match a fresh run | Re-runs the skills and compares with `tests/contracts/` value by value |
+| replay TSLA trade | 41 hits · 364.18 · 358.32 / 370.04 · 29.4 / 25.5 / 45.1 % · 8 shares, $46.88 · PASS |
+| NYSE calendar in the clock | Thanksgiving closed; the Nov 27 early close stops entries at 12:30 |
+| live smoke (`--live`) | The real NYSE clock and a real SPY entry check answer |
+
+It exits 0 when every check passed. During a US session (from 19:15 IST on
+weekdays, 20:15 IST from Nov 2), `--live` shows SPY's real status, for example
+`waiting` or `triggered`. On weekends and at night it shows `closed` / `no-data`.
+
 ### Skill contracts and the recorded numbers (Phase 1)
 
 | What | Command |
