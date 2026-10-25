@@ -6,6 +6,7 @@ A Python dashboard that runs the [day-trader skills](https://github.com/Jakeschi
 on a schedule and shows, for the day and for each trade, whether your rules and the
 honest odds say GO, CAUTION or NO TRADE. It is tooling, not financial advice.
 
+- Overview (what, why, architecture, phases, how to use): [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)
 - Plan: [DASHBOARD_PROJECT_PLAN.md](DASHBOARD_PROJECT_PLAN.md)
 - Build tracker: [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)
 - Skills usage: [DAY_TRADER_GUIDE.md](DAY_TRADER_GUIDE.md)
