@@ -8,7 +8,8 @@ from sqlmodel import col, select
 
 from app.components import charts
 from app.components.page import Page, footer, setup_page
-from gatekeeper import journal, store
+from gatekeeper import journal, paper, store
+from gatekeeper.clock import now_ny
 from gatekeeper.db import session
 from gatekeeper.tables import Decision, Plan, TradeJournal
 from worker.jobs import run_job
@@ -171,6 +172,45 @@ def readiness(trades: list[journal.Trade]) -> None:
     )
 
 
+def paper_period(p: Page, trades: list[journal.Trade]) -> None:
+    st.subheader("Paper-trading period (4 to 8 weeks)")
+    if p.mode != "live":
+        st.caption("Tracked in live mode: your real plans and decisions, week by week.")
+        return
+    with session(p.engine) as s:
+        start = paper.period_start(s, p.settings)
+        items = paper.checklist(s, p.settings, p.trader_dir, now_ny())
+    for i in items:
+        st.markdown(f"{ {True: '✅', False: '⬜', None: '❔'}[i.ok] } {i.check} · {i.detail}")
+    if start is None:
+        st.info("The review starts with your first live plan (or set PAPER_START in .env).")
+        return
+    rows = paper.weekly_review(trades, start)
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "Week": r["week"],
+                    "From": r["from"],
+                    "Plans": r["plans"],
+                    "Taken": r["taken"],
+                    "Skipped": r["skipped"],
+                    "Expectancy (taken, R)": r["expectancy_taken"],
+                    "Expectancy (all, R)": r["expectancy_all"],
+                    "Rules kept": r["adherence"],
+                }
+                for r in rows
+            ]
+        ),
+        hide_index=True,
+        column_config={"Rules kept": st.column_config.NumberColumn(format="percent")},
+    )
+    st.caption(
+        "Copy it into the tracker with `uv run python scripts/paper.py review --update-guide`. If expectancy "
+        "is 0R or less after 40 decisions, change the setup and run the period again."
+    )
+
+
 def export(p: Page) -> None:
     with session(p.engine) as s:
         rows = s.exec(
@@ -192,5 +232,6 @@ all_trades = results(page)
 calibration(all_trades)
 breakdowns(all_trades)
 readiness(all_trades)
+paper_period(page, all_trades)
 export(page)
 footer()

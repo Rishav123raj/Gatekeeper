@@ -130,6 +130,36 @@ then open the Journal (the skip comes out +0.43R, `data_end`, because the record
 
 Restart the worker and the dashboard after saving `.env` settings.
 
+### The paper-trading period (Phase P)
+
+Four to eight weeks of real use, on paper, before any execution is built. Every plan gets a
+Taken or Skipped decision; the Journal then says whether following Gatekeeper helped.
+
+| What | Command |
+| --- | --- |
+| Rules for your evening: entries 09:45–11:00 NY, flat by 12:00 NY (backs up first; `paper` untouched) | `uv run python scripts/paper.py rules` |
+| Day 1 of the period (optional; default: your first live plan) | `uv run python scripts/paper.py start --date 2026-10-26` |
+| The checklist, from your real data (exit 1 while something is ⬜) | `uv run python scripts/paper.py status` |
+| The weekly review table | `uv run python scripts/paper.py review` |
+| ... and write it into IMPLEMENTATION_GUIDE.md's Phase P table | `uv run python scripts/paper.py review --update-guide` |
+| Preview the weekday worker task (installs nothing) | `powershell -ExecutionPolicy Bypass -File scripts\worker_task.ps1` |
+| Run the worker Mon–Fri at 18:00 IST for 9.5 hours (Task Scheduler) | `powershell -ExecutionPolicy Bypass -File scripts\worker_task.ps1 -Install` |
+| Remove that task | `powershell -ExecutionPolicy Bypass -File scripts\worker_task.ps1 -Remove` |
+
+The evening window in IST: entries 19:15–20:30, flat by 21:30 until Oct 30; from Nov 2 (New York
+on winter time) entries 20:15–21:30, flat by 22:30. The Journal page shows the same checklist and
+the weekly table in live mode.
+
+A day in the period:
+
+1. 18:30 IST: the worker is running (the task, or `uv run python -m worker`); open the dashboard.
+2. Pick one setup and keep it for the whole period (for example the 15-minute ORB, `or-mid` stop, 2R).
+3. Plan in the Trade Lab, read the Go / No-Go, then log **Taken** or **Skipped**, ticking "followed
+   rules" honestly. A taken trade goes to your Alpaca **paper** account through `/trader-broker` in
+   Claude chat (your yes each time); record the fills on Positions & Alerts.
+4. Flat by 12:00 NY. The worker writes the journal at 16:10 NY (01:40 IST; 02:40 IST from Nov 2).
+5. Each weekend: `paper.py review --update-guide`, and a line in the Notes column.
+
 ### Go / No-Go (Phase 5)
 
 Two panels answer two questions, each check with its reason (hover a line for its source):
@@ -529,5 +559,5 @@ These commands will work once their phase is built. This file is updated at the 
 | --- | --- | --- |
 | 3 | `GATEKEEPER_MODE=replay` in `.env` | Dashboard in replay mode, with a time slider |
 | 8 | `uv sync --extra broker` | Alpaca **paper** trading support (optional phase) |
-| 9 | `powershell -ExecutionPolicy Bypass -File scripts\install_task.ps1` | Starts the worker automatically at login |
+| 9 | `powershell -ExecutionPolicy Bypass -File scripts\install_task.ps1` | Starts the worker automatically at login (Phase P already has `scripts\worker_task.ps1` for weekday evenings) |
 | 9 | `powershell -ExecutionPolicy Bypass -File scripts\keep_awake.ps1` | Keeps the PC awake during the US session |

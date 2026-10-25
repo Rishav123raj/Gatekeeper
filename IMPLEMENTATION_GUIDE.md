@@ -46,7 +46,7 @@ Claude will then:
 | 5 | Go / No-Go engine | M5 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40118467980 green on Windows + Ubuntu |
 | 6 | Risk, Size, Positions, Alerts | M6 | ✅ | 2026-10-24 | 2026-10-25 | CI run 40127238785 green on Windows + Ubuntu |
 | 7 | Journal & Research | M7 | ✅ | 2026-10-25 | 2026-10-25 | CI run 40165361349 green on Windows + Ubuntu |
-| P | Paper-trading period (4 to 8 weeks) | — | ⬜ | | | Usage, not code |
+| P | Paper-trading period (4 to 8 weeks) | — | 🟨 | 2026-10-25 | | Tools built; the period starts with your first live plan |
 | 8 | Alpaca paper execution (optional) | M8 | ⬜ | | | |
 | 9 | Hardening & operations | M9 | ⬜ | | | |
 
@@ -459,8 +459,19 @@ uv run python scripts/validate.py --phase 7 --live   # every Phase 7 check, PASS
 
 **Goal:** use Gatekeeper live, read-only, for 4 to 8 weeks to find out whether the process gives you an edge, before building any execution.
 
+### Tools (built 2026-10-25)
+- `gatekeeper/paper.py` and `scripts/paper.py`: `rules` (the evening window in `trader/config.json`, backed up, `paper` untouched), `start` (PAPER_START), `status` (this checklist from your real data), `review [--update-guide]` (fills the table below from the journal)
+- Journal page: the same checklist and the weekly table, in live mode
+- `scripts/worker_task.ps1`: the worker Mon–Fri at 18:00 IST for 9.5 hours through Task Scheduler (preview by default; `-Install` / `-Remove`)
+- `tests/test_paper.py` (16): IST times across the November change, rules, the checklist, the weekly review by hand, the tracker update
+
+```powershell
+uv run python scripts/paper.py status                  # where the period stands
+uv run python scripts/paper.py review --update-guide   # each weekend
+```
+
 ### Checklist
-- [ ] `trader/config.json` set for your IST awake window (for example entries 09:45 to 11:00 NY, `flat_by` 12:00 NY)
+- [x] `trader/config.json` set for your IST awake window (for example entries 09:45 to 11:00 NY, `flat_by` 12:00 NY) (2026-10-25, `paper.py rules`: 19:15–20:30 IST, flat by 21:30 IST; an hour later from Nov 2; paper: true; budget and max loss still the skills' example values, $5,000 and $50)
 - [ ] Alpaca **paper** account (or IBKR paper) connected to Claude for manual `/trader-broker` orders
 - [ ] Worker running every US trading day; notifications working
 - [ ] One setup only (for example 15-minute ORB, `or-mid` stop, 2R target)
@@ -618,6 +629,10 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-25 | 7 | `TradeJournal` gained `session_date`, `symbol`, `exit_time`, `needs_fill`, `created_at` (added to existing databases by Phase 5's column upgrade) | The journal stands alone without joining every query |
 | 2026-10-25 | 7 | Settings edits trader/config.json through a pydantic model with bounds (unknown keys kept), a diff preview, then a timestamped backup in `data/backups/` and an atomic write. `paper` is refused in both directions, and a brand-new file is always written with `paper: true` | Going live stays your own deliberate edit |
 | 2026-10-25 | 7 | Settings edits only these .env keys: CORE_TICKERS, AWAKE_IST, NOTIFY, DISABLED_JOBS, FULL_UNIVERSE_ORB and GATE_* (other lines, comments and secrets are kept as they are; secrets are never shown or written). New settings `GATEKEEPER_ENV_FILE` and `BACKUPS_DIR` say where | Keys never pass through the dashboard |
+| 2026-10-25 | P | The evening window is entries 09:45–11:00 NY and flat by 12:00 NY: 19:15–21:30 IST now, 20:15–22:30 IST from Nov 2, inside the 18:30–23:30 awake hours either way. `paper.py rules` writes only those three times (plus clearing the example's placeholder SEC agent); budget and loss limits stay yours to set | The guide's own example; the session's first 90 minutes are the ORB's hours |
+| 2026-10-25 | P | The checklist checks what the data can show (config times inside AWAKE_IST, a weekday worker run on or after the last weekday, NOTIFY, one setup = one (setup, stop rule, target R) across live plans, every finished day's plan decided, 40+ decisions) and marks the broker connection ❔: it lives in Claude, which Gatekeeper can't see. Weekend runs don't count as worker days | Honest about what it can't know |
+| 2026-10-25 | P | Weeks run 7 days from PAPER_START (or the first live plan's day). A week's "taken" expectancy uses only real taken trades; "all" includes the simulated skips; adherence counts every decided plan. `review --update-guide` rewrites only the weeks with plans in the Phase P table | Matches the Journal's two views |
+| 2026-10-25 | P | `scripts/worker_task.ps1` previews by default and installs only with `-Install` (Mon–Fri 18:00 IST, `--run-for 34200` = to 03:30 IST, past the 16:10 NY journal in winter time); not installed by Claude | A scheduled task is a change to your PC; you decide |
 
 ---
 
@@ -632,7 +647,7 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 5 | 2026-10-24 | 3 | One full `uv run pytest` run stalled for over 10 minutes and was stopped; the next verbose run passed all 194 tests in 128 s, and the stall didn't happen again | Watching | If CI or a local run hangs again, re-run with `-v --durations=15` to see which test, and report it |
 | 6 | 2026-10-24 | 3 | CI run 40106465744 failed on Windows only: `test_pin_from_the_watchlist` got pins as TSLA, AMD, NVDA instead of TSLA, NVDA, AMD (and a second test failed because the first never unpinned). `store.pinned()` sorted by `added_at`, and two pins made in the same instant shared a timestamp on Windows' ~15 ms clock | Fixed | Pins are now ordered by SQLite's rowid (insertion order); new test `test_pins_keep_insertion_order_with_equal_timestamps`; the UI test cleans up in `finally`. Found by making CI post failures as public annotations (job logs need admin rights) |
 | 7 | 2026-10-24 | 6 | The real Windows toast was handed over to Windows (win11toast reported success in 0.21 s) from a replay-clock alert on a Saturday; whether it showed on your screen needs your eyes, and a live flat-by toast during a session is still to be seen | Open | Set `NOTIFY=toast` in `.env`, run `uv sync --extra notify`, then `uv run python scripts/validate.py --phase 6 --live` and look for the "Gatekeeper: test" notification; during a session, add plan alerts and watch for flat-by |
-| 8 | 2026-10-25 | 7 | `validate.py --phase 7 --live`: the AAPL earnings check needs `SEC_USER_AGENT` in `.env`, which is empty here, so it failed by design; the Research page shows the same message live. Also no `trader/config.json` yet (the check passes and says so) | Open | Add `SEC_USER_AGENT=Your Name you@example.com` to `.env` and re-run `uv run python scripts/validate.py --phase 7 --live`; run `/trader-budget` once to create `trader/config.json` |
+| 8 | 2026-10-25 | 7 | `validate.py --phase 7 --live`: the AAPL earnings check needs `SEC_USER_AGENT` in `.env`, which is empty here, so it failed by design; the Research page shows the same message live. Also no `trader/config.json` yet (the check passes and says so) | Fixed | 2026-10-25: `SEC_USER_AGENT` set in `.env`; `validate.py --phase 7 --live` 6/6 PASS (AAPL: 4 quarters from EDGAR). `trader/config.json` created by `paper.py rules` (Phase P) |
 
 ---
 
@@ -660,3 +675,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-25 | 6 | CI run 40127238785 green on windows-latest (1 min 32 s) and ubuntu-latest (52 s). Merged `phase-6-risk-positions-alerts` into `main` | CI green | Push `main`; confirm the toast (Issue 7) and a weekday live session (Issue 4) when convenient; then Phase 7 |
 | 2026-10-25 | 7 | Journal engine (`gatekeeper/journal.py`: outcomes on 5-minute bars, R from fills, stats, calibration, breakdowns, readiness card), `job_eod_journal` (real / needs fill / simulated, one row per plan), Journal page (decision notes, stats, cumulative R, histogram, calibration, breakdowns, readiness card, CSV), Research page (earnings from EDGAR, Congress filings with overlap flag), Settings page (config.json editor with diff, backup and `paper` read-only; `.env` editor; diagnostics with the contract self-test); Phase 7 checks in `validate.py`; COMMANDS.md section | 372 pytest pass (journal 14, EOD 5, config / .env 12, pages 6); ruff clean; validate.py --phase 7 offline 5/5 PASS; live EDGAR check needs `SEC_USER_AGENT` (Issue 8) | Push `phase-7-journal-research` so CI runs; set `SEC_USER_AGENT` (Issue 8); then Phase 8 (optional) or the paper-trading period |
 | 2026-10-25 | 7 | CI run 40165361349 green on windows-latest (2 min 38 s) and ubuntu-latest (1 min 43 s). Merged `phase-7-journal-research` into `main` | CI green | Push `main`; set `SEC_USER_AGENT` and re-run `validate.py --phase 7 --live` (Issue 8); Issues 4 and 7 when convenient; then Phase 8 (optional) or the paper-trading period |
+| 2026-10-25 | P | Paper-period tools: `gatekeeper/paper.py` (evening rules, checklist, weekly review, tracker update), `scripts/paper.py` (`rules`, `start`, `status`, `review --update-guide`), the Journal page's paper-period section, `scripts/worker_task.ps1`; PAPER_START setting. Ran `paper.py rules` (trader/config.json created: 19:15–20:30 IST entries, flat by 21:30 IST, paper). Issue 8 fixed (SEC agent set; Phase 7 live 6/6) | test_paper 16 pass; ruff clean; `paper.py status`: config ✅, notifications ✅, worker ⬜ (no weekday run yet), broker ❔ | Push `phase-p-paper-period`; install the worker task; connect Alpaca paper in Claude; start planning from Mon Oct 26 (19:15 IST) |

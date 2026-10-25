@@ -11,7 +11,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
-EDITABLE = {"CORE_TICKERS", "AWAKE_IST", "NOTIFY", "DISABLED_JOBS", "FULL_UNIVERSE_ORB"}
+EDITABLE = {"CORE_TICKERS", "AWAKE_IST", "NOTIFY", "DISABLED_JOBS", "FULL_UNIVERSE_ORB", "PAPER_START"}
 EDITABLE_PREFIX = "GATE_"
 LINE = re.compile(r"^\s*([A-Z0-9_]+)\s*=(.*)$")
 

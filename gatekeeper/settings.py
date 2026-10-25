@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     env_path: Path = Field(Path(".env"), validation_alias="GATEKEEPER_ENV_FILE")
     backups_dir: Path = Path("data/backups")
 
+    # The paper-trading period (Phase P): its first day, YYYY-MM-DD (empty: the day of the first live plan).
+    paper_start: str = ""
+
     # Go / No-Go gate thresholds (plan Section 9). Override any in .env, e.g. GATE_BREADTH_WARN_PCT=15.
     gate_window_warn_min: int = 15  # WARN when the entry window closes within this many minutes
     gate_daily_loss_warn_pct: float = 66.0  # WARN when this share of the daily loss limit is used
