@@ -383,6 +383,40 @@ def check_live_notification():
     return ok, f"NOTIFY={s.notify}: {'handed over' if ok else 'failed (see the log)'}"
 
 
+# --- Phase 7 ---------------------------------------------------------------------------------
+
+
+def check_your_config():
+    """Your trader/config.json passes the Settings page's validation (read only, nothing is written)."""
+    from pydantic import ValidationError
+
+    from gatekeeper import config_edit
+    from gatekeeper.settings import get_settings
+
+    path = get_settings().trader_path / "config.json"
+    doc = config_edit.load(path)
+    if not doc:
+        return True, f"no {path} yet: the Settings page will say so (set it up with /trader-budget)"
+    try:
+        clean = config_edit.validate(doc)
+    except ValidationError as e:
+        return False, "; ".join(f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors())
+    return True, f"valid: budget ${clean['budget']:,.0f}, paper={clean.get('paper', True)}"
+
+
+def check_live_earnings():
+    """AAPL's reported quarters from SEC EDGAR (needs SEC_USER_AGENT in .env)."""
+    from gatekeeper.settings import get_settings
+    from gatekeeper.skills import analyst
+
+    if not get_settings().sec_user_agent:
+        return False, "SEC_USER_AGENT is empty in .env (e.g. SEC_USER_AGENT=Your Name you@example.com)"
+    data, res = analyst.facts(["AAPL"], quarters=4, no_filings=True)
+    if not data:
+        return False, f"{res.status}: {res.message}"
+    return True, f"AAPL: {len(data[0].result.rows)} quarters from EDGAR ({data[0].result.entity})"
+
+
 PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
     # (name, check, needs internet)
     0: [
@@ -441,6 +475,14 @@ PHASES: dict[int, list[tuple[str, Callable[[], tuple[bool, str]], bool]]] = {
         ),
         ("Risk & Size and Positions & Alerts pages", pytest("tests/test_ui_risk_positions.py"), False),
         ("live: a test notification", check_live_notification, True),
+    ],
+    7: [
+        ("journal math against hand calculations", pytest("tests/test_journal.py"), False),
+        ("end-of-day journal on the recorded day", pytest("tests/test_eod_journal.py"), False),
+        ("config and .env editing (backups, paper refused)", pytest("tests/test_config_edit.py"), False),
+        ("Journal, Research and Settings pages", pytest("tests/test_ui_journal_research_settings.py"), False),
+        ("your trader/config.json validates", check_your_config, False),
+        ("live: AAPL earnings from SEC EDGAR", check_live_earnings, True),
     ],
 }
 

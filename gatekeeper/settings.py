@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     replay_date: str = "2026-10-19"
     replay_workspace: Path = Path("replay/workspace")
 
+    # Where the Settings page writes: the .env it edits and the backups it keeps first.
+    env_path: Path = Field(Path(".env"), validation_alias="GATEKEEPER_ENV_FILE")
+    backups_dir: Path = Path("data/backups")
+
     # Go / No-Go gate thresholds (plan Section 9). Override any in .env, e.g. GATE_BREADTH_WARN_PCT=15.
     gate_window_warn_min: int = 15  # WARN when the entry window closes within this many minutes
     gate_daily_loss_warn_pct: float = 66.0  # WARN when this share of the daily loss limit is used

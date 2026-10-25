@@ -281,10 +281,15 @@ class TradeJournal(SQLModel, table=True):
     decision_id: int | None = Field(default=None, foreign_key="decision.id")
     entry_fill: float | None = None
     exit_fill: float | None = None
-    exit_reason: str | None = None  # target | stop | flat | manual
+    exit_reason: str | None = None  # target | stop | flat | data_end | no_data | needs_fill
     r_result: float | None = None
     simulated: bool = False
     notes: str = ""
+    session_date: str | None = Field(default=None, index=True)
+    symbol: str | None = None
+    exit_time: str | None = None  # "HH:MM" NY of the exit bar (simulated) or None
+    needs_fill: bool = False  # taken, but the fills aren't recorded yet
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class AlertFired(SQLModel, table=True):

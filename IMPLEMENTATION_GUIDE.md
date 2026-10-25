@@ -45,7 +45,7 @@ Claude will then:
 | 4 | Trade Lab | M4 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40115151903 green on Windows + Ubuntu |
 | 5 | Go / No-Go engine | M5 | ✅ | 2026-10-24 | 2026-10-24 | CI run 40118467980 green on Windows + Ubuntu |
 | 6 | Risk, Size, Positions, Alerts | M6 | ✅ | 2026-10-24 | 2026-10-25 | CI run 40127238785 green on Windows + Ubuntu |
-| 7 | Journal & Research | M7 | ⬜ | | | |
+| 7 | Journal & Research | M7 | 🟨 | 2026-10-25 | | Built and tested locally; waiting for CI |
 | P | Paper-trading period (4 to 8 weeks) | — | ⬜ | | | Usage, not code |
 | 8 | Alpaca paper execution (optional) | M8 | ⬜ | | | |
 | 9 | Hardening & operations | M9 | ⬜ | | | |
@@ -425,26 +425,33 @@ uv run python scripts/validate.py --phase 6 --live   # every Phase 6 check, PASS
 **Goal:** the learning loop (did following Gatekeeper help?) and the research views.
 
 ### Tasks
-- [ ] **7.1 `gatekeeper/journal.py`**:
+- [x] **7.1 `gatekeeper/journal.py`**:
   - `simulate_outcome(plan, bars) -> (r_result, exit_reason)`: walks 5-minute bars after the entry; stop is checked first, then target; a bar touching both counts as stop; otherwise flat at `flat_by` at that bar's close. The same rules as the Time Machine.
   - `stats(trades) -> {n, win_rate, avg_win_r, avg_loss_r, expectancy_r, profit_factor, max_dd_r, longest_losing_streak, adherence_rate}`
   - `calibration(trades) -> realised win rate per Time Machine verdict bucket`
   - `breakdown(trades, by="setup"|"entry_bucket"|"weekday")`
-- [ ] **7.2 `job_eod_journal`** (16:10 NY): for every plan today, a TAKEN decision with recorded fills gives the real R; TAKEN without fills is flagged "needs fill"; SKIPPED or no decision gives a simulated R (`simulated=true`).
-- [ ] **7.3 `app/pages/6_Journal.py`**: decision log table (editable notes); stats tiles; cumulative R (taken vs. "if I had taken all"); R histogram; calibration bar chart with sample sizes and a plain-language verdict ("not enough trades yet" under 40); breakdowns; the paper → live readiness card (40+ trades, expectancy > 0, adherence ≥ 95%), display only; CSV export.
-- [ ] **7.4 `app/pages/7_Research.py`**:
+- [x] **7.2 `job_eod_journal`** (16:10 NY): for every plan today, a TAKEN decision with recorded fills gives the real R; TAKEN without fills is flagged "needs fill"; SKIPPED or no decision gives a simulated R (`simulated=true`).
+- [x] **7.3 `app/pages/6_Journal.py`**: decision log table (editable notes); stats tiles; cumulative R (taken vs. "if I had taken all"); R histogram; calibration bar chart with sample sizes and a plain-language verdict ("not enough trades yet" under 40); breakdowns; the paper → live readiness card (40+ trades, expectancy > 0, adherence ≥ 95%), display only; CSV export.
+- [x] **7.4 `app/pages/7_Research.py`**:
   - **Earnings** tab: `analyst.facts()` → quarterly revenue and EPS bars with year-on-year labels, margin lines, TTM, flags, links.
   - **Congress** tab: `pelosi.index()/new()` table with filters, an overlap flag against pinned tickers and holdings, and the 45-day-lag banner.
-- [ ] **7.5 `app/pages/8_Settings.py`**: `trader/config.json` editor (pydantic-validated, diff preview, timestamped backup in `data/backups/`); the `paper` field is **read-only**; dashboard settings (core tickers, awake hours, thresholds, job toggles, notifications); Diagnostics (`SkillRun` log, last error per tool, pinned skills commit, **Run contract self-test** which runs the Phase 1 contract tests in a subprocess).
+- [x] **7.5 `app/pages/8_Settings.py`**: `trader/config.json` editor (pydantic-validated, diff preview, timestamped backup in `data/backups/`); the `paper` field is **read-only**; dashboard settings (core tickers, awake hours, thresholds, job toggles, notifications); Diagnostics (`SkillRun` log, last error per tool, pinned skills commit, **Run contract self-test** which runs the Phase 1 contract tests in a subprocess).
 
 ### Tests
-- [ ] **7.6** `tests/test_journal.py`: `simulate_outcome` on hand-built bars (target first, stop first, both in one bar → stop, flat at flat-by); `stats` and `calibration` on 10 synthetic trades with known answers.
-- [ ] **7.7** Replay EOD for the TSLA plan produces a simulated R and a journal row.
+- [x] **7.6** `tests/test_journal.py`: `simulate_outcome` on hand-built bars (target first, stop first, both in one bar → stop, flat at flat-by); `stats` and `calibration` on 10 synthetic trades with known answers.
+- [x] **7.7** Replay EOD for the TSLA plan produces a simulated R and a journal row.
+
+### Verify
+```powershell
+uv run pytest tests/test_journal.py tests/test_eod_journal.py tests/test_config_edit.py tests/test_ui_journal_research_settings.py -v
+uv run streamlit run app/Home.py      # REPLAY: plan TSLA at 10:15, decide, slide to 16:10, open Journal, Research, Settings
+uv run python scripts/validate.py --phase 7 --live   # every Phase 7 check, PASS / FAIL (+ AAPL from SEC EDGAR)
+```
 
 ### Exit criteria
-- [ ] Journal metrics match hand-calculated values
-- [ ] Calibration chart renders and says "not enough data" below 40 trades
-- [ ] Settings refuses to change `paper`, and backs up the config before every save
+- [x] Journal metrics match hand-calculated values (`tests/test_journal.py`: 10 synthetic trades, win rate 40 %, expectancy -0.05R, profit factor 0.9, max drawdown -2.5R, the working in comments; the replay TSLA skip is (366.68 - 364.18) / 5.86 = +0.427R)
+- [x] Calibration chart renders and says "not enough data" below 40 trades ("Not enough trades yet: 1 of the 40 needed…" on the replay evening)
+- [x] Settings refuses to change `paper`, and backs up the config before every save (the toggle is disabled; `config_edit.save` raises `PaperChangeRefused` either way and writes nothing; a budget change through the page left a byte-identical backup first)
 
 ---
 
@@ -605,6 +612,12 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 2026-10-24 | 6 | Task 6.9's flat-by alert rings at 15:56, not 15:55: the alerts job runs every 2 minutes (…15:54, 15:56) and the rule rings at the first check after 15:55 | The schedule from Phase 2; the skill's own example shows the same |
 | 2026-10-24 | 6 | `win11toast` is an optional extra (`uv sync --extra notify`), so CI and Linux don't install it; the tests use a fake module | It's Windows-only |
 | 2026-10-24 | 6 | The wording test flagged six lines on the new Positions page ("market sell", "a sell you placed", the fill form's Side field). They describe orders, not advice, but the test stays strict: the sentences now say "closing order", and only the Side field's values `["sell", "buy"]` are allowed, with the reason in the test | Phase 5's guard did its job on Phase 6 code |
+| 2026-10-25 | 7 | Journal outcomes use the Time Machine's rules on the day's 5-minute bars from the entry bar on: stop checked first (a bar touching both is -1R), target at its exact R, otherwise out at the close of the last bar before `flat_by`. If the bars end earlier, the reason says `data_end`, not `flat` | Honest about short data; the recorded replay day ends at 10:45 |
+| 2026-10-25 | 7 | Real R from fills: average fill price per side; an exit within 1 cent of the stop or target is labelled stop / target. A TAKEN decision without both fills is flagged `needs_fill` (no R) until the fills are recorded; the next run updates the same row (one journal row per plan) | Never guess a result for a trade you took |
+| 2026-10-25 | 7 | Journal stats show two views: taken (real) trades, and every plan including the simulated skips ("if I had taken all"). The readiness card counts only real taken trades; adherence counts every decision | Answers "did following Gatekeeper help?" without inflating the real record |
+| 2026-10-25 | 7 | `TradeJournal` gained `session_date`, `symbol`, `exit_time`, `needs_fill`, `created_at` (added to existing databases by Phase 5's column upgrade) | The journal stands alone without joining every query |
+| 2026-10-25 | 7 | Settings edits trader/config.json through a pydantic model with bounds (unknown keys kept), a diff preview, then a timestamped backup in `data/backups/` and an atomic write. `paper` is refused in both directions, and a brand-new file is always written with `paper: true` | Going live stays your own deliberate edit |
+| 2026-10-25 | 7 | Settings edits only these .env keys: CORE_TICKERS, AWAKE_IST, NOTIFY, DISABLED_JOBS, FULL_UNIVERSE_ORB and GATE_* (other lines, comments and secrets are kept as they are; secrets are never shown or written). New settings `GATEKEEPER_ENV_FILE` and `BACKUPS_DIR` say where | Keys never pass through the dashboard |
 
 ---
 
@@ -619,6 +632,7 @@ Record anything that changes the plan, a pinned version, or a golden number.
 | 5 | 2026-10-24 | 3 | One full `uv run pytest` run stalled for over 10 minutes and was stopped; the next verbose run passed all 194 tests in 128 s, and the stall didn't happen again | Watching | If CI or a local run hangs again, re-run with `-v --durations=15` to see which test, and report it |
 | 6 | 2026-10-24 | 3 | CI run 40106465744 failed on Windows only: `test_pin_from_the_watchlist` got pins as TSLA, AMD, NVDA instead of TSLA, NVDA, AMD (and a second test failed because the first never unpinned). `store.pinned()` sorted by `added_at`, and two pins made in the same instant shared a timestamp on Windows' ~15 ms clock | Fixed | Pins are now ordered by SQLite's rowid (insertion order); new test `test_pins_keep_insertion_order_with_equal_timestamps`; the UI test cleans up in `finally`. Found by making CI post failures as public annotations (job logs need admin rights) |
 | 7 | 2026-10-24 | 6 | The real Windows toast was handed over to Windows (win11toast reported success in 0.21 s) from a replay-clock alert on a Saturday; whether it showed on your screen needs your eyes, and a live flat-by toast during a session is still to be seen | Open | Set `NOTIFY=toast` in `.env`, run `uv sync --extra notify`, then `uv run python scripts/validate.py --phase 6 --live` and look for the "Gatekeeper: test" notification; during a session, add plan alerts and watch for flat-by |
+| 8 | 2026-10-25 | 7 | `validate.py --phase 7 --live`: the AAPL earnings check needs `SEC_USER_AGENT` in `.env`, which is empty here, so it failed by design; the Research page shows the same message live. Also no `trader/config.json` yet (the check passes and says so) | Open | Add `SEC_USER_AGENT=Your Name you@example.com` to `.env` and re-run `uv run python scripts/validate.py --phase 7 --live`; run `/trader-budget` once to create `trader/config.json` |
 
 ---
 
@@ -644,3 +658,4 @@ Append one line per work session (newest at the bottom).
 | 2026-10-24 | 5 | CI run 40118467980 green on windows-latest (2 min 9 s) and ubuntu-latest (1 min 15 s). Merged `phase-5-go-no-go` into `main` | CI green | Push `main`; Issue 4 (a weekday live session) when convenient; then Phase 6 |
 | 2026-10-24 | 6 | Risk & Size page (limits, sizing chart, live check.py, ledger, What-if sandbox), Positions & Alerts page (flat-by countdown NY/IST, positions in R, closing ticket, fills by hand, alert rules, fired history), Trade Lab Add plan alerts, `gatekeeper/notify.py` (toast / Telegram) wired into the alerts job, `gatekeeper/sandbox.py`; fixed the Phase 1 portfolio model; a real toast handed to Windows; Phase 6 checks in `validate.py`; COMMANDS.md section | 335 pytest pass (notify 12, sandbox 5, alert worker 4, pages 7); ruff clean; validate.py --phase 6 --live 3/3 PASS | Push `phase-6-risk-positions-alerts` so CI runs; confirm the toast (Issue 7); then Phase 7 |
 | 2026-10-25 | 6 | CI run 40127238785 green on windows-latest (1 min 32 s) and ubuntu-latest (52 s). Merged `phase-6-risk-positions-alerts` into `main` | CI green | Push `main`; confirm the toast (Issue 7) and a weekday live session (Issue 4) when convenient; then Phase 7 |
+| 2026-10-25 | 7 | Journal engine (`gatekeeper/journal.py`: outcomes on 5-minute bars, R from fills, stats, calibration, breakdowns, readiness card), `job_eod_journal` (real / needs fill / simulated, one row per plan), Journal page (decision notes, stats, cumulative R, histogram, calibration, breakdowns, readiness card, CSV), Research page (earnings from EDGAR, Congress filings with overlap flag), Settings page (config.json editor with diff, backup and `paper` read-only; `.env` editor; diagnostics with the contract self-test); Phase 7 checks in `validate.py`; COMMANDS.md section | 372 pytest pass (journal 14, EOD 5, config / .env 12, pages 6); ruff clean; validate.py --phase 7 offline 5/5 PASS; live EDGAR check needs `SEC_USER_AGENT` (Issue 8) | Push `phase-7-journal-research` so CI runs; set `SEC_USER_AGENT` (Issue 8); then Phase 8 (optional) or the paper-trading period |

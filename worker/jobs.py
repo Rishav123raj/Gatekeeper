@@ -18,15 +18,16 @@ from typing import Any
 
 from sqlalchemy.engine import Engine
 
-from gatekeeper import regime, store, yahoo
+from gatekeeper import journal, regime, store, yahoo
 from gatekeeper.clock import SessionTimes, as_ny, load_session_times, market_day, session_phase
 from gatekeeper.db import session
 from gatekeeper.notify import is_urgent
+from gatekeeper.readiness import broker_records
 from gatekeeper.runner import RunResult, SkillRunner
 from gatekeeper.settings import Settings
 from gatekeeper.skills import alerts, analyst, broker, entry, news, pelosi, scanner
 from gatekeeper.skills._base import read_json
-from gatekeeper.skills.models import ClockStatus
+from gatekeeper.skills.models import ClockStatus, ExitPlan
 
 log = logging.getLogger("gatekeeper.worker")
 
@@ -310,9 +311,90 @@ def job_pelosi(ctx: JobContext) -> str:
     return f"{len(added)} new filings" + (f": {', '.join(f.member for f in added[:3])}" if added else "")
 
 
+def _fill_price(rows: list, side: str) -> float | None:
+    """The average price of the day's fills on one side (several partial fills average out)."""
+    fills = [
+        (float(r.qty or 0), r.price) for r in rows if r.status == "filled" and r.side == side and r.price
+    ]
+    shares = sum(q for q, _ in fills)
+    return round(sum(q * p for q, p in fills) / shares, 4) if shares else None
+
+
 def job_eod_journal(ctx: JobContext) -> str:
+    """After the close: every plan of the day gets its result in R.
+
+    TAKEN with both fills recorded → the real R. TAKEN without them → flagged "needs fill".
+    SKIPPED, or no decision → a simulated R from the day's 5-minute bars (simulated=True).
+    """
     need_phase(ctx, "eod_journal", {"after_close"})
-    raise Skip("the end-of-day journal arrives in Phase 7")
+    today = f"{ctx.now():%Y-%m-%d}"
+    records = [r for r in broker_records(ctx.runner("eod_journal").trader_dir) if r.day == today]
+    src = ctx.yahoo()
+    done = []
+    with session(ctx.engine) as s:
+        plans = store.plans_for_day(s, ctx.mode, today)
+        if not plans:
+            raise Skip("no plans today")
+        for row in plans:
+            plan = ExitPlan.model_validate(row.payload)
+            dec = store.decision_for_plan(s, ctx.mode, row.id)
+            base = {
+                "plan_id": row.id,
+                "decision_id": dec.id if dec else None,
+                "session_date": today,
+                "symbol": plan.symbol,
+            }
+            mine = [r for r in records if r.symbol == plan.symbol]
+            entry_px, exit_px = _fill_price(mine, "buy"), _fill_price(mine, "sell")
+            if dec is not None and dec.action == "TAKEN":
+                if entry_px is not None and exit_px is not None:
+                    r, why = journal.real_r(plan, entry_px, exit_px)
+                    store.save_journal(
+                        s,
+                        ctx.mode,
+                        **base,
+                        entry_fill=entry_px,
+                        exit_fill=exit_px,
+                        r_result=r,
+                        exit_reason=why,
+                        simulated=False,
+                        needs_fill=False,
+                    )
+                    done.append(f"{plan.symbol} taken {r:+.2f}R")
+                else:
+                    store.save_journal(
+                        s,
+                        ctx.mode,
+                        **base,
+                        entry_fill=entry_px,
+                        exit_fill=exit_px,
+                        r_result=None,
+                        exit_reason="needs_fill",
+                        simulated=False,
+                        needs_fill=True,
+                        notes="taken, but the fills aren't recorded (Positions & Alerts)",
+                    )
+                    done.append(f"{plan.symbol} needs fill")
+                continue
+            chart = src.chart(plan.symbol)
+            out = journal.simulate_outcome(plan, chart.bars if chart else yahoo.empty_bars())
+            store.save_journal(
+                s,
+                ctx.mode,
+                **base,
+                r_result=out.r,
+                exit_reason=out.exit_reason,
+                exit_fill=out.exit_price,
+                exit_time=out.exit_time,
+                simulated=True,
+                needs_fill=False,
+                notes="skipped: simulated on the day's bars" if dec else "no decision: simulated",
+            )
+            done.append(
+                f"{plan.symbol} simulated "
+                + (f"{out.r:+.2f}R ({out.exit_reason})" if out.r is not None else out.exit_reason)
+            )
+    return "; ".join(done)
 
 
 JOBS: dict[str, Callable[[JobContext], str]] = {

@@ -35,6 +35,7 @@ from gatekeeper.tables import (
     ScanRun,
     SkillRun,
     TmResult,
+    TradeJournal,
     utcnow,
 )
 
@@ -625,3 +626,69 @@ def save_decision(
 def decisions(s: Session, mode: str, limit: int = 50) -> list[Decision]:
     q = select(Decision).where(Decision.mode == mode).order_by(col(Decision.id).desc()).limit(limit)
     return list(s.exec(q))
+
+
+# --- journal (Phase 7) -----------------------------------------------------------------------
+
+
+def plans_for_day(s: Session, mode: str, day: str) -> list[Plan]:
+    """The day's plans, the latest per symbol (an earlier plan replaced by a new one isn't a trade)."""
+    rows = s.exec(select(Plan).where(Plan.mode == mode, Plan.date == day).order_by(col(Plan.id))).all()
+    latest: dict[str, Plan] = {}
+    for p in rows:
+        latest[p.symbol] = p
+    return list(latest.values())
+
+
+def decision_for_plan(s: Session, mode: str, plan_id: int) -> Decision | None:
+    q = select(Decision).where(Decision.mode == mode, Decision.plan_id == plan_id)
+    return s.exec(q.order_by(col(Decision.id).desc())).first()
+
+
+def journal_for_plan(s: Session, mode: str, plan_id: int) -> TradeJournal | None:
+    q = select(TradeJournal).where(TradeJournal.mode == mode, TradeJournal.plan_id == plan_id)
+    return s.exec(q.order_by(col(TradeJournal.id).desc())).first()
+
+
+def save_journal(s: Session, mode: str, **fields: Any) -> TradeJournal:
+    """One row per plan: updates the plan's row if there is one (e.g. fills recorded later)."""
+    row = journal_for_plan(s, mode, fields["plan_id"]) if fields.get("plan_id") else None
+    row = row or TradeJournal(mode=mode)
+    for k, v in fields.items():
+        setattr(row, k, v)
+    s.add(row)
+    s.flush()
+    return row
+
+
+def journal_trades(s: Session, mode: str) -> list[Any]:
+    """Every journal row as a `journal.Trade`, with its plan, decision and Time Machine verdict."""
+    from gatekeeper.journal import Trade
+    from gatekeeper.readiness import verdict_category
+
+    out = []
+    for j in s.exec(select(TradeJournal).where(TradeJournal.mode == mode).order_by(col(TradeJournal.id))):
+        plan = s.get(Plan, j.plan_id) if j.plan_id else None
+        dec = s.get(Decision, j.decision_id) if j.decision_id else None
+        tm = latest_tm(s, mode, j.plan_id) if j.plan_id else None
+        out.append(
+            Trade(
+                day=j.session_date or (plan.date if plan else ""),
+                symbol=j.symbol or (plan.symbol if plan else ""),
+                r=j.r_result,
+                simulated=j.simulated,
+                taken=bool(dec and dec.action == "TAKEN"),
+                followed_rules=dec.followed_rules if dec else None,
+                verdict=verdict_category(tm.verdict) if tm else None,
+                setup=plan.setup if plan else None,
+                entry_time=plan.entry_time if plan else None,
+            )
+        )
+    return out
+
+
+def update_decision_note(s: Session, decision_id: int, note: str) -> None:
+    d = s.get(Decision, decision_id)
+    if d is not None:
+        d.reason_note = note
+        s.add(d)

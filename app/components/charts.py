@@ -385,3 +385,132 @@ def size_limits_bar(sizing: Sizing, height: int = 220) -> go.Figure:
         yaxis={"autorange": "reversed"},
     )
     return fig
+
+
+# --- Journal and Research (Phase 7) ----------------------------------------------------------
+
+
+def cumulative_r(series: dict[str, list[float]], height: int = 280) -> go.Figure:
+    """Cumulative R, one line per series (e.g. trades taken vs every plan incl. simulated)."""
+    fig = go.Figure()
+    for name, rs in series.items():
+        total, ys = 0.0, []
+        for r in rs:
+            total += r
+            ys.append(round(total, 3))
+        fig.add_trace(
+            go.Scatter(
+                x=list(range(1, len(ys) + 1)),
+                y=ys,
+                mode="lines+markers",
+                name=name,
+                hovertemplate="trade %{x}: %{y:+.2f}R<extra></extra>",
+            )
+        )
+    fig.add_hline(y=0, line={"color": FLAT, "width": 1, "dash": "dot"})
+    fig.update_layout(
+        height=height,
+        margin={"l": 0, "r": 0, "t": 10, "b": 0},
+        xaxis={"title": "trade #"},
+        yaxis={"title": "cumulative R"},
+        legend={"orientation": "h", "y": -0.25},
+    )
+    return fig
+
+
+def r_histogram(rs: list[float], height: int = 240) -> go.Figure:
+    fig = go.Figure(
+        go.Histogram(
+            x=rs,
+            xbins={"size": 0.25},
+            marker_color="#78909c",
+            hovertemplate="%{x}R: %{y} trades<extra></extra>",
+        )
+    )
+    fig.add_vline(x=0, line={"color": FLAT, "width": 1, "dash": "dot"})
+    fig.update_layout(
+        height=height,
+        margin={"l": 0, "r": 0, "t": 10, "b": 0},
+        bargap=0.05,
+        xaxis={"title": "R per trade"},
+        yaxis={"title": "trades"},
+    )
+    return fig
+
+
+VERDICT_LABELS = {
+    "strong_target": "Strongly target",
+    "lean_target": "Leans target",
+    "coin_flip": "Coin flip",
+    "break_even": "Break-even",
+    "lean_stop": "Leans stop",
+    "strong_stop": "Strongly stop",
+    "none": "No verdict",
+}
+
+
+def calibration_bar(rows: list[dict], height: int = 260) -> go.Figure:
+    """Realised win rate per Time Machine verdict, with the number of trades on each bar."""
+    fig = go.Figure(
+        go.Bar(
+            x=[VERDICT_LABELS.get(r["verdict"], r["verdict"]) for r in rows],
+            y=[100 * r["win_rate"] for r in rows],
+            text=[f"n={r['n']} · {r['avg_r']:+.2f}R" for r in rows],
+            textposition="outside",
+            marker_color="#455a64",
+            hovertemplate="%{x}: %{y:.0f} % won<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        height=height, margin={"l": 0, "r": 0, "t": 20, "b": 0}, yaxis={"title": "won (%)", "range": [0, 105]}
+    )
+    return fig
+
+
+def earnings_bars(rows: list, field: str, label: str, yoy_field: str | None, height: int = 260) -> go.Figure:
+    """One bar per quarter (oldest first) with its year-on-year change written on it."""
+    rows = list(reversed(rows))
+    xs = [r.fiscal or r.end for r in rows]
+    ys = [getattr(r, field) for r in rows]
+    text = [
+        (f"{getattr(r, yoy_field):+.1f} % y/y" if yoy_field and getattr(r, yoy_field) is not None else "")
+        + (" (derived)" if r.derived else "")
+        for r in rows
+    ]
+    fig = go.Figure(
+        go.Bar(
+            x=xs,
+            y=ys,
+            text=text,
+            textposition="outside",
+            marker_color="#1565c0",
+            hovertemplate="%{x}: %{y:,.2f}<extra></extra>",
+        )
+    )
+    fig.update_layout(height=height, margin={"l": 0, "r": 0, "t": 20, "b": 0}, yaxis={"title": label})
+    return fig
+
+
+def margin_lines(rows: list, height: int = 240) -> go.Figure:
+    rows = list(reversed(rows))
+    xs = [r.fiscal or r.end for r in rows]
+    fig = go.Figure()
+    for field, name in (("gross_margin", "gross"), ("operating_margin", "operating"), ("net_margin", "net")):
+        ys = [getattr(r, field) for r in rows]
+        if any(y is not None for y in ys):
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="lines+markers",
+                    name=name,
+                    hovertemplate=f"{name} %{{y:.1f}} %<extra></extra>",
+                )
+            )
+    fig.update_layout(
+        height=height,
+        margin={"l": 0, "r": 0, "t": 10, "b": 0},
+        yaxis={"title": "margin (%)"},
+        legend={"orientation": "h", "y": -0.25},
+    )
+    return fig

@@ -113,6 +113,23 @@ with `uv run python scripts/validate.py --phase 6 --live`.
 > `uv sync` without `--extra notify` removes the toast package again; use
 > `uv sync --extra notify` if you keep `NOTIFY=toast`.
 
+### Journal, Research, Settings (Phase 7)
+
+| Page | What it shows |
+| --- | --- |
+| **Journal** | Every decision (only the Note column is editable; **Save** stores it), **Run the end-of-day journal now**, stats for taken trades and for every plan (skips simulated on the day's bars), cumulative R, an R histogram, whether the Time Machine's verdicts held up ("Not enough trades yet" under 40), breakdowns by setup / entry time / weekday, the paper → live readiness card (display only) and a CSV download |
+| **Research** | **Earnings**: revenue and EPS by quarter against a year earlier, margins, flags and links to the 10-Q and press release (live needs `SEC_USER_AGENT` in `.env`). **Congress**: recent filings by a member (45-day lag noted), flagged when a ticker is one you pin or hold |
+| **Settings** | **Trading rules**: edit `trader/config.json`, **Preview changes**, then **Save** (the old file is backed up to `data/backups/` first; `paper` is read-only and can't change here). **Dashboard**: core tickers, awake hours, notifications, jobs switched off and the Go / No-Go thresholds, saved to `.env` (backed up first; other lines and keys are kept). **Diagnostics**: skill runs, the last error per tool, the pinned skills' commit and **Run the contract self-test** |
+
+The worker writes the journal at 16:10 NY (01:40 IST; 02:40 IST from Nov 2): a trade you took
+gets its real R from the recorded fills (or "needs fill" until you record them on Positions &
+Alerts), and a plan you skipped or never decided is simulated on that day's bars.
+
+Try it in replay: plan TSLA at 10:15 in the Trade Lab, log a decision, slide the clock to 16:10,
+then open the Journal (the skip comes out +0.43R, `data_end`, because the recording stops at 10:45).
+
+Restart the worker and the dashboard after saving `.env` settings.
+
 ### Go / No-Go (Phase 5)
 
 Two panels answer two questions, each check with its reason (hover a line for its source):
@@ -177,7 +194,7 @@ The jobs and when they run (New York time; IST is 9:30 hours ahead until Nov 1, 
 | `quotes` | every 5 min, session | Fresh prices, only while a plan for today or a position exists |
 | `alerts_check` | every 2 min, session | Rings your alert rules (stop, target, flat-by) |
 | `pelosi` | Mon–Fri, hourly 08:00–20:00 | New Congress trade filings |
-| `eod_journal` | Mon–Fri 16:10 | End-of-day journal (arrives in Phase 7; skips until then) |
+| `eod_journal` | Mon–Fri 16:10 | End-of-day journal: real R for trades you took, simulated R for plans you skipped |
 
 Weekends, NYSE holidays and early closes are handled: a job outside its window
 records "skipped" with the reason. Switch jobs off with
@@ -234,7 +251,9 @@ One command checks everything a phase delivered and prints a PASS / FAIL line pe
 
 | What | Command |
 | --- | --- |
-| **Validate Phase 6** (offline) | `uv run python scripts/validate.py --phase 6` |
+| **Validate Phase 7** (offline) | `uv run python scripts/validate.py --phase 7` |
+| Validate Phase 7 + AAPL earnings from SEC EDGAR | `uv run python scripts/validate.py --phase 7 --live` |
+| Validate Phase 6 (offline) | `uv run python scripts/validate.py --phase 6` |
 | Validate Phase 6 + send one test notification | `uv run python scripts/validate.py --phase 6 --live` |
 | Validate Phase 5 (offline) | `uv run python scripts/validate.py --phase 5` |
 | Validate Phase 5, including the live day panel | `uv run python scripts/validate.py --phase 5 --live` |
@@ -264,6 +283,17 @@ Phase 1's checks:
 It exits 0 when every check passed. During a US session (from 19:15 IST on
 weekdays, 20:15 IST from Nov 2), `--live` shows SPY's real status, for example
 `waiting` or `triggered`. On weekends and at night it shows `closed` / `no-data`.
+
+Phase 7's checks:
+
+| Check | What it proves |
+| --- | --- |
+| journal math against hand calculations | Target first, stop first, both in one bar → stop, flat at flat-by, data ending early; R from fills; win rate, averages, expectancy, profit factor, drawdown, losing streak, adherence, calibration and breakdowns on 10 trades worked out by hand; the readiness card |
+| end-of-day journal on the recorded day | The skipped (or undecided) TSLA plan simulated at +0.427R (`data_end` at 10:45); taken without fills → "needs fill", then +0.997R (target) once the fills are recorded, in the same row; nothing before the close |
+| config and .env editing | Bad values refused; the diff; a backup before each save, none when nothing changed; `paper` refused both ways; a new file starts on paper; `.env` keeps comments and other lines and refuses keys and tokens |
+| Journal, Research and Settings pages | The replay evening: the skip in the log, "Not enough trades yet: 1 of the 40", CSV download; AAPL $109.42B and the Congress table; the paper toggle disabled; a budget change saved after a backup; a `.env` save that keeps the other lines |
+| your trader/config.json validates | Your real rules pass the Settings page's checks (read only) |
+| live: AAPL earnings from SEC EDGAR (`--live`) | Reported quarters arrive (needs `SEC_USER_AGENT` in `.env`) |
 
 Phase 6's checks:
 
