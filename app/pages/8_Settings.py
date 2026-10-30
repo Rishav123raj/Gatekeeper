@@ -221,6 +221,11 @@ def diagnostics(p: Page) -> None:
             pd.DataFrame([{"Tool": t, "Status": st_, "Runs": n} for (t, st_), n in sorted(counts.items())]),
             hide_index=True,
         )
+    if p.settings.public_demo:
+        st.caption(
+            "The contract self-test runs on your own install (`uv run pytest tests/test_models_contract.py`)."
+        )
+        return
     if st.button(
         "Run the contract self-test",
         key="selftest",

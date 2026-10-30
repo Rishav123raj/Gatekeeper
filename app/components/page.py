@@ -11,6 +11,7 @@ import streamlit as st
 from sqlalchemy.engine import Engine
 
 from app import state
+from app.components import demo
 from app.components.clock_bar import clock_bar
 from gatekeeper import store, yahoo
 from gatekeeper.clock import fmt_dual
@@ -59,7 +60,11 @@ class Page:
 
 def setup_page(title: str, icon: str = "🛡️") -> Page:
     st.set_page_config(page_title=f"{title} · Gatekeeper", page_icon=icon, layout="wide")
-    settings, engine = get_settings(), get_engine()
+    settings = get_settings()
+    if settings.public_demo:
+        settings, engine = demo.session_copy(settings)
+    else:
+        engine = get_engine()
     sidebar(settings, engine)
     clock_bar()
     return Page(settings, engine, state.mode(), state.now())
@@ -69,14 +74,20 @@ def sidebar(settings: Settings, engine: Engine) -> None:
     with st.sidebar:
         st.markdown("### 🛡️ Gatekeeper")
         st.caption("Every trade has to earn its way in.")
-        choice = st.segmented_control(
-            "Mode",
-            ["LIVE", "REPLAY"],
-            default=state.mode().upper(),
-            key="mode_choice",
-            help="REPLAY plays back the recorded day (Mon 2026-10-19) without the internet.",
-        )
-        st.session_state["mode"] = (choice or state.mode().upper()).lower()
+        if settings.public_demo:
+            st.info(
+                "**Public demo.** A recorded trading day (Mon 19 Oct 2026), played back without the "
+                "internet. Everything you do stays in your own copy, removed after a few hours."
+            )
+        else:
+            choice = st.segmented_control(
+                "Mode",
+                ["LIVE", "REPLAY"],
+                default=state.mode().upper(),
+                key="mode_choice",
+                help="REPLAY plays back the recorded day (Mon 2026-10-19) without the internet.",
+            )
+            st.session_state["mode"] = (choice or state.mode().upper()).lower()
 
         if state.mode() == "replay":
             t = st.slider(

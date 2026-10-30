@@ -8,7 +8,6 @@ import streamlit as st
 
 from app import state
 from gatekeeper.clock import PHASE_LABELS, fmt_dual, load_session_times, market_day, session_phase
-from gatekeeper.settings import get_settings
 
 
 def clock_line(now: datetime, mode: str, phase: str) -> str:
@@ -21,7 +20,7 @@ def clock_line(now: datetime, mode: str, phase: str) -> str:
 
 @st.fragment(run_every="10s")
 def clock_bar() -> None:
-    settings = get_settings()
+    settings = state.settings()
     mode, now = state.mode(), state.now()
     trader = (
         settings.resolve(settings.replay_workspace) if mode == "replay" else settings.root_path

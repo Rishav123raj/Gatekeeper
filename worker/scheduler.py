@@ -22,7 +22,7 @@ from sqlalchemy.engine import Engine
 from gatekeeper import store
 from gatekeeper.clock import NY, as_ny, now_ny
 from gatekeeper.db import session
-from gatekeeper.replay import ReplayContext, default_paths, prepare_workspace
+from gatekeeper.replay import ReplayContext, prepare_workspace
 from gatekeeper.runner import SkillRunner
 from gatekeeper.settings import Settings
 from gatekeeper.tables import ReplayState, utcnow
@@ -97,14 +97,13 @@ def replay_context(
 ) -> tuple[JobContext, SimClock]:
     """A replay context whose clock the simulator moves; `fresh` wipes the workspace's trader/ first."""
     clock = SimClock(datetime.combine(day, start, NY))
+    # the workspace and skills of the settings passed in (a public-demo visitor has their own)
+    workspace = Path(workspace or settings.resolve(settings.replay_workspace))
+    skills = Path(skills_dir or settings.skills_path)
     if fresh:
-        rctx = prepare_workspace(clock.t.replace(tzinfo=None), workspace, skills_dir)
+        rctx = prepare_workspace(clock.t.replace(tzinfo=None), workspace, skills)
     else:
-        dws, dskills = default_paths()
-        skills = Path(skills_dir or dskills)
-        rctx = ReplayContext(
-            clock.t.replace(tzinfo=None), Path(workspace or dws), skills / "tests" / "fixtures"
-        )
+        rctx = ReplayContext(clock.t.replace(tzinfo=None), workspace, skills / "tests" / "fixtures")
 
     def make_runner(now: datetime, job: str) -> SkillRunner:
         return SkillRunner.from_settings(
@@ -197,7 +196,7 @@ def sync_replay(
     """
     until = as_ny(until).replace(second=0, microsecond=0)
     day, end = until.date(), until.time()
-    ws = Path(workspace or default_paths()[0])
+    ws = Path(workspace or settings.resolve(settings.replay_workspace))
     jobs = enabled_jobs(settings)
     with session(engine) as s:
         st = s.get(ReplayState, 1)

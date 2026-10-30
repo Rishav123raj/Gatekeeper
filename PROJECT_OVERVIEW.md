@@ -585,6 +585,10 @@ Slide the clock to 10:15 on Mon 19 Oct 2026. You should see:
 
 Log a decision, slide to 16:10, and the Journal shows the result.
 
+**Or share it:** a hosted copy with `PUBLIC_DEMO=true` (for example on Streamlit Community Cloud)
+gives every visitor their own private replay of that day, with no live data and nothing shared.
+The steps are in [COMMANDS.md](COMMANDS.md#host-a-public-demo-anyone-with-the-link).
+
 ### 9.3 A live evening (IST)
 
 | IST (summer / winter) | NY | What to do |

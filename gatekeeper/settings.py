@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     env_path: Path = Field(Path(".env"), validation_alias="GATEKEEPER_ENV_FILE")
     backups_dir: Path = Path("data/backups")
 
+    # Public demo (a hosted copy anyone can open): replay only, each browser session in its own
+    # throwaway folder under demo_root (empty: the system temp folder), removed after demo_ttl_hours.
+    public_demo: bool = False
+    demo_root: str = ""
+    demo_ttl_hours: float = 6
+
     # The paper-trading period (Phase P): its first day, YYYY-MM-DD (empty: the day of the first live plan).
     paper_start: str = ""
 

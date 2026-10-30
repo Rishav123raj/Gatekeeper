@@ -130,6 +130,37 @@ then open the Journal (the skip comes out +0.43R, `data_end`, because the record
 
 Restart the worker and the dashboard after saving `.env` settings.
 
+### Host a public demo (anyone with the link)
+
+A hosted copy runs in **public demo mode**: replay only (the recorded Mon 19 Oct 2026), no live
+data, and every visitor gets a private copy (own database, workspace and settings) that is
+removed after `DEMO_TTL_HOURS` (6). Your own install, `trader/` and `.env` are never involved.
+
+Free hosting on **Streamlit Community Cloud**:
+
+1. Push `main` to GitHub (the repo must be public, or Streamlit must be allowed to read it).
+2. Sign in at https://share.streamlit.io with GitHub → **Create app** → **Deploy a public app from GitHub**.
+3. Repository `Rishav123raj/Gatekeeper`, branch `main`, main file path `app/Home.py`.
+4. **Advanced settings**: Python **3.12**; Secrets:
+   ```toml
+   PUBLIC_DEMO = "true"
+   GATEKEEPER_MODE = "replay"
+   ```
+5. **Deploy**. Share the `https://<name>.streamlit.app` link.
+
+It installs from `requirements.txt` (regenerate with
+`uv export --no-dev --no-hashes --format requirements-txt -o requirements.txt` after changing
+dependencies). If the skills submodule wasn't cloned, the first page view fetches it.
+
+Try demo mode locally first:
+
+```powershell
+$env:PUBLIC_DEMO = "true"; uv run streamlit run app/Home.py --server.port 8502
+```
+
+Notes: a free app sleeps after a few days without visitors (the first visitor wakes it, about a
+minute); each new visitor waits about a minute while their copy of the day is replayed to 10:15.
+
 ### The paper-trading period (Phase P)
 
 Four to eight weeks of real use, on paper, before any execution is built. Every plan gets a
